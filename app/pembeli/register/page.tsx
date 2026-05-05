@@ -2,8 +2,19 @@
 
 import { Mail, Lock, User, Phone, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { userStorage } from "@/lib/storage";
+
+type RegisteredUser = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  password: string;
+  role: "pembeli";
+};
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +59,7 @@ export default function RegisterPage() {
     // Save user to localStorage (simple client-side store)
     try {
       const usersRaw = localStorage.getItem("users") || "[]";
-      const users = JSON.parse(usersRaw) as Array<any>;
+      const users = JSON.parse(usersRaw) as RegisteredUser[];
 
       const exists = users.find((u) => u.email === formData.email);
       if (exists) {
@@ -57,18 +68,25 @@ export default function RegisterPage() {
       }
 
       const newUser = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
         fullName: formData.fullName,
         email: formData.email,
         phone: formData.phone,
         password: formData.password,
+        role: "pembeli",
       };
-
-      users.push(newUser);
+      users.push(newUser as RegisteredUser);
       localStorage.setItem("users", JSON.stringify(users));
-      localStorage.setItem("currentUser", JSON.stringify({ email: newUser.email, fullName: newUser.fullName }));
+      userStorage.set({
+        id: newUser.id,
+        email: newUser.email,
+        fullName: newUser.fullName,
+        phone: newUser.phone,
+        role: "pembeli",
+      });
 
-      // Redirect to dashboard (logged in)
-      router.push("/dashboard");
+      // Redirect ke dashboard pembeli
+      router.push("/pembeli/dashboard");
     } catch (err) {
       console.error(err);
       alert("Terjadi kesalahan saat menyimpan akun.");
@@ -76,7 +94,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-gray-900 dark:via-black dark:to-gray-900">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-blue-50 dark:from-gray-900 dark:via-black dark:to-gray-900">
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           
@@ -222,10 +240,13 @@ export default function RegisterPage() {
 
           {/* RIGHT - IMAGE / VISUAL */}
           <div className="hidden lg:flex justify-center">
-            <img
+            <Image
               src="/login-illustration.png"
-              alt=""
-              className="w-[400px]"
+              alt="Ilustrasi login pembeli"
+              width={400}
+              height={400}
+              className="w-100 h-auto"
+              priority
             />
           </div>
 

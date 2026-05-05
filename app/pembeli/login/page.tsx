@@ -4,6 +4,7 @@ import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { userStorage, penjualSession } from "@/lib/storage";
 
 export default function LoginPembeli() {
   const [showPassword, setShowPassword] = useState(false);
@@ -48,19 +49,21 @@ export default function LoginPembeli() {
           return;
         }
 
-        // Simpan user login
-        localStorage.setItem(
-          "currentUser",
-          JSON.stringify({
-            email: user.email,
-            fullName: user.fullName,
-            role: "user",
-          })
-        );
+        // Simpan user login dengan key yang dipakai dashboard
+        userStorage.set({
+          id: user.id || user.email,
+          email: user.email,
+          fullName: user.fullName,
+          phone: user.phone,
+          address: user.address,
+          role: "pembeli",
+        });
 
         // Bersihin role lain
-        localStorage.removeItem("currentAdmin");
-        localStorage.removeItem("currentSeller");
+        try {
+          localStorage.removeItem("currentAdmin");
+        } catch {}
+        penjualSession.clear();
 
         // Redirect ke dashboard pembeli
         router.push("/pembeli/dashboard");
@@ -74,7 +77,10 @@ export default function LoginPembeli() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-50 px-4">
+    <div
+      className="min-h-screen flex items-center justify-center px-4"
+      style={{ background: "linear-gradient(135deg, #eff6ff 0%, #ffffff 50%, #eff6ff 100%)" }}
+    >
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
         
         {/* Logo */}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ADMIN_CREDENTIALS } from "@/lib/adminCredentials";
+import { userStorage, penjualSession } from "@/lib/storage";
 
 export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -47,8 +48,8 @@ export default function AdminLoginPage() {
           );
 
           // 🔥 FIX: bersihin semua role lain
-          localStorage.removeItem("currentUser");
-          localStorage.removeItem("currentSeller");
+          try { userStorage.clear(); } catch {}
+          penjualSession.clear();
 
           router.push("/admin/dashboard");
         } else {
@@ -64,7 +65,10 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-red-50 px-4">
+    <div
+      className="min-h-screen flex items-center justify-center px-4"
+      style={{ background: "linear-gradient(135deg, #fff1f2 0%, #ffffff 50%, #fff1f2 100%)" }}
+    >
       
       <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8">
 
