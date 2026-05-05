@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { penjualStorage } from "@/lib/storage";
 
-export default function penjualRegister() {
+export default function PenjualRegister() {
   const router = useRouter();
 
   const [formData, setFormData] = useState({
@@ -15,38 +14,62 @@ export default function penjualRegister() {
   });
 
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
+    setError("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    const penjuals = penjualStorage.getAll();
+    try {
+      const response = await fetch("/api/auth/register/penjual", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+          phone: "",
+        }),
+      });
 
-    // cek email sudah ada
-    const exist = penjuals.find((s: any) => s.email === formData.email);
+      const raw = await response.text();
+      let data: { error?: string; token?: string; seller?: unknown } = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        throw new Error("Server mengembalikan response tidak valid.");
+      }
 
-    if (exist) {
-      setError("Email sudah terdaftar!");
-      return;
+      if (!response.ok) {
+        setError(data.error || "Registrasi gagal. Silakan coba lagi.");
+        return;
+      }
+
+      // Save token and seller data to localStorage
+      if (data.token) {
+        localStorage.setItem("sellerToken", data.token);
+        localStorage.setItem("seller", JSON.stringify(data.seller));
+      }
+
+      // Redirect ke dashboard penjual
+      router.push("/penjual/dashboard");
+    } catch (err) {
+      console.error(err);
+      setError("Terjadi kesalahan saat mendaftar.");
+    } finally {
+      setLoading(false);
     }
-
-    // simpan penjual baru
-    penjualStorage.add({
-      id: crypto.randomUUID(),
-      fullName: formData.fullName,
-      email: formData.email,
-      password: formData.password,
-      role: "penjual",
-    } as any);
-
-    // redirect ke login
-    router.push("/penjual/login");
   };
 
   return (
@@ -64,7 +87,7 @@ export default function penjualRegister() {
 
           <input type="password" name="password" placeholder="Password" onChange={handleChange} className="w-full border p-3 rounded" required />
 
-          <button className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded font-semibold">Daftar</button>
+          <button disabled={loading} className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white py-3 rounded font-semibold">{loading ? "Mendaftar..." : "Daftar"}</button>
         </form>
 
         <p className="text-center text-sm mt-6">Sudah punya akun? <Link href="/penjual/login" className="text-purple-600 font-bold">Login di sini</Link></p>

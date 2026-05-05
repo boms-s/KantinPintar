@@ -1,15 +1,7 @@
-// Admin Credentials - Mudah diubah
-// Ubah email dan password sesuai kebutuhan Anda
+import { AdminCredentials } from "@/lib/types";
 
-export const ADMIN_CREDENTIALS = {
-  email: "admin@kantinpintar.com",
-  password: "Admin123",
-  fullName: "Admin Kantin Pintar",
+export const ADMIN_CREDENTIALS: AdminCredentials = {
+  fullName: "Administrator",
+  email: "admin@kantin.com",
+  password: "admin123",
 };
-
-// Untuk production, gunakan environment variables
-// export const ADMIN_CREDENTIALS = {
-//   email: process.env.NEXT_PUBLIC_ADMIN_EMAIL || "admin@kantinpintar.com",
-//   password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "admin123",
-//   fullName: "Admin Kantin Pintar",
-// };

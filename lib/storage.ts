@@ -1,324 +1,171 @@
-/**
- * Centralized Storage Utility untuk Smart Kantin
- * Menggunakan localStorage dengan namespace yang konsisten
- */
+import { CartItem, MenuItem, Order, PembeliUser, penjual } from "@/lib/types";
 
-import {
-  PembeliUser,
-  penjual,
-  MenuItem,
-  CartItem,
-  Order,
-} from "./types";
+function readJson<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
-const STORAGE_KEYS = {
-  CURRENT_USER: "sk_current_user",
-  CURRENT_PENJUAL: "sk_current_penjual",
-  penjualS: "sk_penjuals",
-  MENUS: "sk_menus",
-  CART: "sk_cart",
-  ORDERS: "sk_orders",
-  FAVORITES: "sk_favorites",
-};
+function writeJson<T>(key: string, value: T): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(key, JSON.stringify(value));
+}
 
-// ============ USER OPERATIONS ============
+function notifyStorageChange(eventName?: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (eventName) {
+      window.dispatchEvent(new Event(eventName));
+    }
+    window.dispatchEvent(new Event("storage"));
+  } catch {
+    // ignore
+  }
+}
+
 export const userStorage = {
   get: (): PembeliUser | null => {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.CURRENT_USER) || localStorage.getItem("currentUser");
-      return data ? JSON.parse(data) : null;
-    } catch {
-      return null;
-    }
+    return readJson<PembeliUser | null>("currentUser", readJson<PembeliUser | null>("user", null));
   },
-
   set: (user: PembeliUser): void => {
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+    writeJson("currentUser", user);
+    writeJson("user", user);
+    notifyStorageChange();
   },
-
   clear: (): void => {
-    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-  },
-
-  isLoggedIn: (): boolean => {
-    return userStorage.get() !== null;
+    if (typeof window === "undefined") return;
+    localStorage.removeItem("currentUser");
+    localStorage.removeItem("user");
+    notifyStorageChange();
   },
 };
 
-// ============ PENJUAL SESSION ============
 export const penjualSession = {
   get: (): penjual | null => {
-    try {
-      const data =
-        localStorage.getItem(STORAGE_KEYS.CURRENT_PENJUAL) ||
-        localStorage.getItem("currentpenjual");
-      return data ? JSON.parse(data) : null;
-    } catch {
-      return null;
-    }
+    return readJson<penjual | null>("currentPenjual", readJson<penjual | null>("seller", null));
   },
-
   set: (seller: penjual): void => {
-    localStorage.setItem(STORAGE_KEYS.CURRENT_PENJUAL, JSON.stringify(seller));
+    writeJson("currentPenjual", seller);
+    writeJson("seller", seller);
+    notifyStorageChange();
   },
-
   clear: (): void => {
-    localStorage.removeItem(STORAGE_KEYS.CURRENT_PENJUAL);
-  },
-
-  isLoggedIn: (): boolean => {
-    return penjualSession.get() !== null;
+    if (typeof window === "undefined") return;
+    localStorage.removeItem("currentPenjual");
+    localStorage.removeItem("seller");
+    notifyStorageChange();
   },
 };
 
-// ============ penjual OPERATIONS ============
 export const penjualStorage = {
-  getAll: (): penjual[] => {
-    try {
-      const primary = localStorage.getItem(STORAGE_KEYS.penjualS);
-      const legacy = localStorage.getItem("penjuals");
-
-      // If legacy exists but primary key doesn't, migrate legacy -> primary
-      if (!primary && legacy) {
-        try {
-          localStorage.setItem(STORAGE_KEYS.penjualS, legacy);
-        } catch {}
-      }
-
-      const data = primary || legacy;
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
+  getAll: (): penjual[] => readJson<penjual[]>("penjuals", []),
+  set: (items: penjual[]): void => {
+    writeJson("penjuals", items);
+    notifyStorageChange();
   },
-
-  getById: (id: string): penjual | null => {
-    const penjuals = penjualStorage.getAll();
-    return penjuals.find((s) => s.id === id) || null;
-  },
-
-  set: (penjuals: penjual[]): void => {
-    localStorage.setItem(STORAGE_KEYS.penjualS, JSON.stringify(penjuals));
-  },
-
-  add: (penjual: penjual): void => {
-    const penjuals = penjualStorage.getAll();
-    penjuals.push(penjual);
-    penjualStorage.set(penjuals);
+  add: (item: penjual): void => {
+    const current = penjualStorage.getAll();
+    current.push(item);
+    penjualStorage.set(current);
   },
 };
 
-// ============ MENU/FOOD OPERATIONS ============
 export const menuStorage = {
-  getAll: (): MenuItem[] => {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.MENUS);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
-  },
-
-  getBypenjualId: (penjualId: string): MenuItem[] => {
-    const menus = menuStorage.getAll();
-    return menus.filter((m) => m.penjualId === penjualId);
-  },
-
-  getById: (id: string): MenuItem | null => {
-    const menus = menuStorage.getAll();
-    return menus.find((m) => m.id === id) || null;
-  },
-
-  getGroupedBypenjual: (): Map<string, MenuItem[]> => {
-    const menus = menuStorage.getAll();
-    const grouped = new Map<string, MenuItem[]>();
-
-    menus.forEach((menu) => {
-      const penjualId = menu.penjualId;
-      if (!grouped.has(penjualId)) {
-        grouped.set(penjualId, []);
-      }
-      grouped.get(penjualId)!.push(menu);
-    });
-
-    return grouped;
-  },
-
-  set: (menus: MenuItem[]): void => {
-    localStorage.setItem(STORAGE_KEYS.MENUS, JSON.stringify(menus));
+  getAll: (): MenuItem[] => readJson<MenuItem[]>("menus", []),
+  set: (items: MenuItem[]): void => {
+    writeJson("menus", items);
     menuStorage.notifyUpdate();
   },
-
-  add: (menu: MenuItem): void => {
-    const menus = menuStorage.getAll();
-    menus.push(menu);
-    menuStorage.set(menus);
+  add: (item: MenuItem): void => {
+    const current = menuStorage.getAll();
+    current.push(item);
+    menuStorage.set(current);
   },
-
   notifyUpdate: (): void => {
-    if (typeof window !== "undefined") {
-      // Dispatch custom event for same-tab listeners
-      window.dispatchEvent(new CustomEvent("sk_menus_updated"));
-      // Also use storage key hack to trigger other tabs/windows
-      try {
-        localStorage.setItem("sk_menus_last_update", String(Date.now()));
-      } catch {}
-    }
+    notifyStorageChange("sk_menus_updated");
   },
 };
 
-// ============ CART OPERATIONS ============
 export const cartStorage = {
-  getAll: (): CartItem[] => {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.CART);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
+  getAll: (): CartItem[] => readJson<CartItem[]>("cart", []),
+  set: (items: CartItem[]): void => {
+    writeJson("cart", items);
+    notifyStorageChange("sk_cart_updated");
   },
-
-  add: (item: MenuItem, qty: number = 1): void => {
-    const cart = cartStorage.getAll();
-    const existing = cart.find((c) => c.id === item.id);
-
+  add: (item: Partial<CartItem> & { id: string; name: string; price: number }, qty = 1): void => {
+    const current = cartStorage.getAll();
+    const existing = current.find((c) => c.id === item.id);
     if (existing) {
       existing.qty += qty;
     } else {
-      cart.push({ ...item, qty });
+      current.push({
+        id: item.id,
+        name: item.name,
+        price: Number(item.price) || 0,
+        qty,
+        image: item.image,
+        penjualId: item.penjualId,
+      });
     }
-
-    cartStorage.set(cart);
-    cartStorage.notifyUpdate();
+    cartStorage.set(current);
   },
-
-  remove: (itemId: string): void => {
-    const cart = cartStorage.getAll().filter((c) => c.id !== itemId);
-    cartStorage.set(cart);
-    cartStorage.notifyUpdate();
+  updateQty: (id: string, qty: number): void => {
+    const current = cartStorage.getAll();
+    const target = current.find((c) => c.id === id);
+    if (!target) return;
+    target.qty = Math.max(1, qty);
+    cartStorage.set(current);
   },
-
-  updateQty: (itemId: string, qty: number): void => {
-    const cart = cartStorage.getAll();
-    const item = cart.find((c) => c.id === itemId);
-    if (item) {
-      item.qty = Math.max(0, qty);
-      if (item.qty === 0) {
-        cartStorage.remove(itemId);
-      } else {
-        cartStorage.set(cart);
-        cartStorage.notifyUpdate();
-      }
-    }
+  remove: (id: string): void => {
+    const current = cartStorage.getAll().filter((c) => c.id !== id);
+    cartStorage.set(current);
   },
-
   clear: (): void => {
-    localStorage.removeItem(STORAGE_KEYS.CART);
-    cartStorage.notifyUpdate();
+    cartStorage.set([]);
   },
-
   getTotalQty: (): number => {
-    return cartStorage.getAll().reduce((acc, item) => acc + item.qty, 0);
+    return cartStorage.getAll().reduce((acc, item) => acc + (item.qty || 0), 0);
   },
-
   getTotalPrice: (): number => {
-    return cartStorage.getAll().reduce((acc, item) => acc + item.price * item.qty, 0);
-  },
-
-  set: (cart: CartItem[]): void => {
-    localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
-  },
-
-  notifyUpdate: (): void => {
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("sk_cart_updated"));
-    }
-  },
-};
-
-// ============ ORDER OPERATIONS ============
-export const orderStorage = {
-  getAll: (): Order[] => {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.ORDERS);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
-  },
-
-  getById: (id: string): Order | null => {
-    const orders = orderStorage.getAll();
-    return orders.find((o) => o.id === id) || null;
-  },
-
-  getByStatus: (status: Order["status"]): Order[] => {
-    const orders = orderStorage.getAll();
-    return orders.filter((o) => o.status === status);
-  },
-
-  add: (order: Order): void => {
-    const orders = orderStorage.getAll();
-    orders.push(order);
-    orderStorage.set(orders);
-  },
-
-  update: (id: string, updates: Partial<Order>): void => {
-    const orders = orderStorage.getAll();
-    const orderIndex = orders.findIndex((o) => o.id === id);
-    if (orderIndex !== -1) {
-      orders[orderIndex] = { ...orders[orderIndex], ...updates };
-      orderStorage.set(orders);
-    }
-  },
-
-  set: (orders: Order[]): void => {
-    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
-  },
-
-  getTotalSpent: (userId: string): number => {
-    return orderStorage
+    return cartStorage
       .getAll()
-      .filter((o) => o.userId === userId && o.status === "completed")
-      .reduce((acc, order) => acc + order.totalPrice, 0);
+      .reduce((acc, item) => acc + (Number(item.price) || 0) * (item.qty || 0), 0);
   },
 };
 
-// ============ FAVORITES OPERATIONS ============
+export const orderStorage = {
+  getAll: (): Order[] => readJson<Order[]>("orders", []),
+  set: (items: Order[]): void => {
+    writeJson("orders", items);
+    notifyStorageChange();
+  },
+  add: (order: Order): void => {
+    const current = orderStorage.getAll();
+    current.push(order);
+    orderStorage.set(current);
+  },
+  update: (id: string, updates: Partial<Order>): void => {
+    const current = orderStorage.getAll();
+    const index = current.findIndex((o) => o.id === id);
+    if (index === -1) return;
+    current[index] = { ...current[index], ...updates };
+    orderStorage.set(current);
+  },
+};
+
 export const favoriteStorage = {
-  getAll: (): string[] => {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.FAVORITES);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
+  getAll: (): string[] => readJson<string[]>("favorites", []),
+  set: (items: string[]): void => {
+    writeJson("favorites", items);
+    notifyStorageChange();
   },
-
-  add: (menuId: string): void => {
-    const favorites = favoriteStorage.getAll();
-    if (!favorites.includes(menuId)) {
-      favorites.push(menuId);
-      favoriteStorage.set(favorites);
-    }
-  },
-
-  remove: (menuId: string): void => {
-    const favorites = favoriteStorage.getAll().filter((f) => f !== menuId);
-    favoriteStorage.set(favorites);
-  },
-
-  isFavorite: (menuId: string): boolean => {
-    return favoriteStorage.getAll().includes(menuId);
-  },
-
-  set: (favorites: string[]): void => {
-    localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(favorites));
-  },
-
-  getFavoriteItems: (): MenuItem[] => {
-    const favorites = favoriteStorage.getAll();
-    const menus = menuStorage.getAll();
-    return menus.filter((m) => favorites.includes(m.id));
+  toggle: (menuId: string): void => {
+    const current = favoriteStorage.getAll();
+    const exists = current.includes(menuId);
+    favoriteStorage.set(exists ? current.filter((id) => id !== menuId) : [...current, menuId]);
   },
 };

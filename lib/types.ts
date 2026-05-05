@@ -1,24 +1,19 @@
-/**
- * Type definitions untuk Smart Kantin
- */
-
-// User/Pembeli Type
 export interface PembeliUser {
   id: string;
   fullName: string;
   email: string;
   phone?: string;
   address?: string;
-  role: "pembeli";
+  role?: "pembeli" | "penjual" | "admin";
 }
 
-// penjual Type
 export interface penjual {
   id: string;
   fullName: string;
   name?: string;
   email?: string;
   password?: string;
+  phone?: string;
   role?: "penjual";
   description?: string;
   image?: string;
@@ -26,7 +21,6 @@ export interface penjual {
   location?: string;
 }
 
-// Menu/Food Item Type
 export interface MenuItem {
   id: string;
   name: string;
@@ -34,33 +28,35 @@ export interface MenuItem {
   price: number;
   image?: string;
   penjualId: string;
-  penjualName?: string;
   category?: string;
-  available: boolean;
+  available?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-// Cart Item Type
-export interface CartItem extends MenuItem {
+export interface CartItem {
+  id: string;
+  name: string;
+  price: number;
   qty: number;
+  image?: string;
+  penjualId?: string;
+  penjualName?: string;
 }
 
-// Order Type
 export interface Order {
   id: string;
   userId: string;
   items: CartItem[];
   totalPrice: number;
-  status: "pending" | "confirmed" | "preparing" | "ready" | "completed" | "cancelled";
+  status: string;
+  notes?: string;
   createdAt: string;
   updatedAt?: string;
-  notes?: string;
 }
 
-// Pembeli Dashboard Stats Type
-export interface DashboardStats {
-  totalOrders: number;
-  completedOrders: number;
-  pendingOrders: number;
-  totalSpent: number;
-  favoriteItems: MenuItem[];
+export interface AdminCredentials {
+  fullName: string;
+  email: string;
+  password: string;
 }

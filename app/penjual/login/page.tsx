@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { penjualSession, penjualStorage } from "@/lib/storage";
 
-export default function penjualLogin() {
+export default function PenjualLogin() {
   const router = useRouter();
 
   const [formData, setFormData] = useState({
@@ -24,45 +23,49 @@ export default function penjualLogin() {
     setError("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
 
-    setTimeout(() => {
-      const penjuals = penjualStorage.getAll();
-
-      const inputEmail = (formData.email || "").trim().toLowerCase();
-      const inputPassword = (formData.password || "").trim();
-
-      const penjual = penjuals.find((s: any) => {
-        const storedEmail = (s.email || "").trim().toLowerCase();
-        const storedPassword = (s.password || "").trim();
-        return storedEmail === inputEmail && storedPassword === inputPassword;
+    try {
+      const response = await fetch("/api/auth/login/penjual", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
       });
 
-      if (!penjual) {
-        console.debug("penjuals found:", penjuals);
-        console.debug("login attempt:", { email: formData.email });
-        setError("Email atau password salah.");
-        setLoading(false);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Email atau password salah.");
         return;
       }
 
-      penjualSession.set({
-        id: penjual.id || penjual.email,
-        fullName: penjual.fullName || penjual.name || penjual.email,
-        email: penjual.email,
-        role: "penjual",
-      } as any);
+      // Save token and seller data to localStorage
+      if (data.token) {
+        localStorage.setItem("sellerToken", data.token);
+        localStorage.setItem("seller", JSON.stringify(data.seller));
+      }
 
-      // clear other roles if present
+      // Clear other roles if present
       try {
-        localStorage.removeItem("currentUser");
-        localStorage.removeItem("currentAdmin");
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
       } catch {}
 
       router.replace("/penjual/dashboard");
-    }, 500);
+    } catch (err) {
+      console.error(err);
+      setError("Terjadi kesalahan saat login.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -80,7 +83,7 @@ export default function penjualLogin() {
 
           <input type="password" name="password" placeholder="Password" onChange={handleChange} className="w-full border p-3 rounded" required />
 
-          <button disabled={loading} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded font-semibold">
+          <button disabled={loading} className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white py-3 rounded font-semibold">
             {loading ? "Loading..." : "Login"}
           </button>
         </form>

@@ -4,7 +4,6 @@ import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { userStorage, penjualSession } from "@/lib/storage";
 
 export default function LoginPembeli() {
   const [showPassword, setShowPassword] = useState(false);
@@ -27,53 +26,50 @@ export default function LoginPembeli() {
     setError("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    setTimeout(() => {
-      try {
-        const usersRaw = localStorage.getItem("users") || "[]";
-        const users = JSON.parse(usersRaw);
+    try {
+      const response = await fetch("/api/auth/login/pembeli", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
 
-        const user = users.find(
-          (u: any) =>
-            u.email === formData.email &&
-            u.password === formData.password
-        );
+      const data = await response.json();
 
-        if (!user) {
-          setError("Email atau password salah.");
-          setLoading(false);
-          return;
-        }
-
-        // Simpan user login dengan key yang dipakai dashboard
-        userStorage.set({
-          id: user.id || user.email,
-          email: user.email,
-          fullName: user.fullName,
-          phone: user.phone,
-          address: user.address,
-          role: "pembeli",
-        });
-
-        // Bersihin role lain
-        try {
-          localStorage.removeItem("currentAdmin");
-        } catch {}
-        penjualSession.clear();
-
-        // Redirect ke dashboard pembeli
-        router.push("/pembeli/dashboard");
-      } catch (err) {
-        console.error(err);
-        setError("Terjadi kesalahan saat login.");
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        setError(data.error || "Email atau password salah.");
+        return;
       }
-    }, 800);
+
+      // Save token and user data to localStorage
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+      }
+
+      // Clear other roles if present
+      try {
+        localStorage.removeItem("sellerToken");
+        localStorage.removeItem("seller");
+      } catch {}
+
+      // Redirect ke dashboard pembeli
+      router.push("/pembeli/dashboard");
+    } catch (err) {
+      console.error(err);
+      setError("Terjadi kesalahan saat login.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -159,7 +155,7 @@ export default function LoginPembeli() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white py-3 rounded-lg font-semibold"
           >
             {loading ? "Loading..." : "Login"}
           </button>

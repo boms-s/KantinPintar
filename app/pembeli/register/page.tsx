@@ -5,20 +5,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { userStorage } from "@/lib/storage";
-
-type RegisteredUser = {
-  id: string;
-  fullName: string;
-  email: string;
-  phone: string;
-  password: string;
-  role: "pembeli";
-};
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const [formData, setFormData] = useState({
@@ -36,60 +28,72 @@ export default function RegisterPage() {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+    setError("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    
     // Basic validation
     if (!formData.fullName || !formData.email || !formData.password) {
-      alert("Harap isi semua field yang diperlukan.");
+      setError("Harap isi semua field yang diperlukan.");
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      alert("Password dan konfirmasi password tidak cocok.");
+      setError("Password dan konfirmasi password tidak cocok.");
       return;
     }
 
     if (!formData.terms) {
-      alert("Anda harus menyetujui Syarat & Ketentuan.");
+      setError("Anda harus menyetujui Syarat & Ketentuan.");
       return;
     }
 
-    // Save user to localStorage (simple client-side store)
-    try {
-      const usersRaw = localStorage.getItem("users") || "[]";
-      const users = JSON.parse(usersRaw) as RegisteredUser[];
+    setLoading(true);
 
-      const exists = users.find((u) => u.email === formData.email);
-      if (exists) {
-        alert("Email sudah terdaftar. Silakan login atau gunakan email lain.");
+    try {
+      const response = await fetch("/api/auth/register/pembeli", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          address: "",
+        }),
+      });
+
+      const raw = await response.text();
+      let data: { error?: string; token?: string; user?: unknown } = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        throw new Error("Server mengembalikan response tidak valid.");
+      }
+
+      if (!response.ok) {
+        setError(data.error || "Registrasi gagal. Silakan coba lagi.");
         return;
       }
 
-      const newUser = {
-        id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
-        fullName: formData.fullName,
-        email: formData.email,
-        phone: formData.phone,
-        password: formData.password,
-        role: "pembeli",
-      };
-      users.push(newUser as RegisteredUser);
-      localStorage.setItem("users", JSON.stringify(users));
-      userStorage.set({
-        id: newUser.id,
-        email: newUser.email,
-        fullName: newUser.fullName,
-        phone: newUser.phone,
-        role: "pembeli",
-      });
+      // Save token and user data to localStorage
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+      }
 
       // Redirect ke dashboard pembeli
       router.push("/pembeli/dashboard");
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan saat menyimpan akun.");
+      setError("Terjadi kesalahan saat mendaftar. Silakan coba lagi.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -124,6 +128,13 @@ export default function RegisterPage() {
                 Daftar sekarang dan nikmati kemudahan memesan makanan kantin.
               </p>
             </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">
+                {error}
+              </div>
+            )}
 
             {/* FORM */}
             <form onSubmit={handleSubmit} className="space-y-4 mb-6">
@@ -224,8 +235,11 @@ export default function RegisterPage() {
               </label>
 
               {/* Button */}
-              <button className="w-full bg-blue-600 text-white py-3 rounded-lg">
-                Buat Akun
+              <button 
+                disabled={loading}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white py-3 rounded-lg font-semibold"
+              >
+                {loading ? "Mendaftar..." : "Buat Akun"}
               </button>
             </form>
 
@@ -241,12 +255,11 @@ export default function RegisterPage() {
           {/* RIGHT - IMAGE / VISUAL */}
           <div className="hidden lg:flex justify-center">
             <Image
-              src="/login-illustration.png"
+              src="/next.svg"
               alt="Ilustrasi login pembeli"
               width={400}
               height={400}
               className="w-100 h-auto"
-              priority
             />
           </div>
 
