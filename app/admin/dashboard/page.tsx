@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, Plus, Edit2, Trash2, ShoppingCart, TrendingUp, Users, Home } from "lucide-react";
+import { BarChart3, Home, LayoutGrid, LogOut, Plus, Shield, ShoppingCart, Trash2, Users } from "lucide-react";
 
 interface MenuItem {
   id: string;
@@ -14,10 +14,37 @@ interface MenuItem {
   image?: string;
 }
 
+type TabKey = "overview" | "menu" | "orders" | "settings";
+
 export default function AdminDashboardPage() {
-  const [admin, setAdmin] = useState<{ fullName?: string; email?: string; role?: string } | null>(null);
-  const [currentTab, setCurrentTab] = useState<"overview" | "menu" | "orders" | "settings">("overview");
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const router = useRouter();
+  const admin = useSyncExternalStore(
+    () => () => {},
+    () => {
+      try {
+        const adminData = localStorage.getItem("currentAdmin");
+        return adminData ? (JSON.parse(adminData) as { fullName?: string; email?: string; role?: string }) : null;
+      } catch (error) {
+        console.error(error);
+        return null;
+      }
+    },
+    () => null,
+  );
+  const [currentTab, setCurrentTab] = useState<TabKey>("overview");
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
+    if (typeof window === "undefined") {
+      return [];
+    }
+
+    try {
+      const storedMenu = localStorage.getItem("menuItems");
+      return storedMenu ? (JSON.parse(storedMenu) as MenuItem[]) : [];
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
+  });
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [newMenu, setNewMenu] = useState({
     name: "",
@@ -26,44 +53,40 @@ export default function AdminDashboardPage() {
     description: "",
   });
 
-  const router = useRouter();
-
   useEffect(() => {
-    try {
-      const adminData = localStorage.getItem("currentAdmin");
-      if (!adminData) {
-        router.push("/login");
-        return;
-      }
-      setAdmin(JSON.parse(adminData));
-
-      // Load menu items from localStorage
-      const storedMenu = localStorage.getItem("menuItems");
-      if (storedMenu) {
-        setMenuItems(JSON.parse(storedMenu));
-      }
-    } catch (err) {
-      console.error(err);
-      router.push("/login");
+    if (!admin) {
+      router.replace("/admin/login");
     }
-  }, [router]);
+  }, [admin, router]);
+
+  const metrics = useMemo(
+    () => [
+      { label: "Total Menu", value: menuItems.length, icon: ShoppingCart, tone: "bg-violet-600" },
+      { label: "Total Pesanan", value: 0, icon: BarChart3, tone: "bg-emerald-600" },
+      { label: "Total Pengguna", value: 0, icon: Users, tone: "bg-sky-600" },
+      { label: "Status Sistem", value: "Aktif", icon: Shield, tone: "bg-slate-900" },
+    ],
+    [menuItems.length],
+  );
 
   const handleLogout = () => {
     try {
       localStorage.removeItem("currentAdmin");
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
     }
     router.push("/admin/login");
   };
 
-  const handleAddMenu = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddMenu = (event: React.FormEvent) => {
+    event.preventDefault();
+
     const newMenuItem: MenuItem = {
       id: Date.now().toString(),
       ...newMenu,
-      price: parseFloat(newMenu.price.toString()),
+      price: Number(newMenu.price),
     };
+
     const updatedMenu = [...menuItems, newMenuItem];
     setMenuItems(updatedMenu);
     localStorage.setItem("menuItems", JSON.stringify(updatedMenu));
@@ -78,351 +101,223 @@ export default function AdminDashboardPage() {
   };
 
   if (!admin) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6 dark:bg-slate-950">
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-8 text-center shadow-[0_24px_80px_-40px_rgba(15,23,42,0.6)] dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-red-600">Admin console</p>
+          <h1 className="mt-3 text-2xl font-semibold text-slate-950 dark:text-white">Memuat dashboard...</h1>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
-      <div className="w-full px-10 py-10">
-        <div className="flex gap-8">
-          {/* Sidebar */}
-          <aside className="w-64 bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md h-fit sticky top-10">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-red-600 rounded flex items-center justify-center text-white font-bold">
-                🔐
-              </div>
-              <div>
-                <div className="font-bold">ADMIN PANEL</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Kantin Pintar</div>
-              </div>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(244,63,94,0.08),transparent_30%),linear-gradient(180deg,rgba(248,250,252,1)_0%,rgba(255,255,255,1)_32%,rgba(241,245,249,1)_100%)] px-4 py-6 text-slate-900 dark:bg-[radial-gradient(circle_at_top,rgba(244,63,94,0.14),transparent_30%),linear-gradient(180deg,rgba(15,23,42,1)_0%,rgba(2,6,23,1)_100%)] dark:text-white sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-7xl gap-6 xl:grid-cols-[280px_1fr]">
+        <aside className="sticky top-6 h-fit rounded-[2rem] border border-slate-200/80 bg-white/90 p-5 shadow-[0_18px_52px_-36px_rgba(15,23,42,0.5)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/85">
+          <div className="flex items-center gap-3 rounded-3xl border border-red-100 bg-red-50 p-4 dark:border-red-500/20 dark:bg-red-500/10">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-600 text-white">
+              <Shield size={20} />
             </div>
-
-            <nav className="space-y-2 mb-8">
-              <button
-                onClick={() => setCurrentTab("overview")}
-                className={`w-full text-left px-3 py-2 rounded-lg font-semibold flex items-center gap-2 transition ${
-                  currentTab === "overview"
-                    ? "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                }`}
-              >
-                <TrendingUp size={18} />
-                Dashboard
-              </button>
-              <button
-                onClick={() => setCurrentTab("menu")}
-                className={`w-full text-left px-3 py-2 rounded-lg font-semibold flex items-center gap-2 transition ${
-                  currentTab === "menu"
-                    ? "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                }`}
-              >
-                <ShoppingCart size={18} />
-                Kelola Menu
-              </button>
-              <button
-                onClick={() => setCurrentTab("orders")}
-                className={`w-full text-left px-3 py-2 rounded-lg font-semibold flex items-center gap-2 transition ${
-                  currentTab === "orders"
-                    ? "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                }`}
-              >
-                <ShoppingCart size={18} />
-                Pesanan
-              </button>
-              <button
-                onClick={() => setCurrentTab("settings")}
-                className={`w-full text-left px-3 py-2 rounded-lg font-semibold flex items-center gap-2 transition ${
-                  currentTab === "settings"
-                    ? "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                }`}
-              >
-                <Users size={18} />
-                Pengaturan
-              </button>
-            </nav>
-
-            <hr className="border-gray-200 dark:border-gray-700 mb-4" />
-
-            <div className="space-y-2">
-              <Link
-                href="/"
-                className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 transition"
-              >
-                <Home size={18} />
-                Beranda
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 flex items-center gap-2 transition"
-              >
-                <LogOut size={18} />
-                Logout
-              </button>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-red-600 dark:text-red-200">Admin panel</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300">Kantin Pintar</p>
             </div>
-          </aside>
-
-          {/* Main Content */}
-          <div className="flex-1">
-            {/* Header */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md mb-8">
-              <h1 className="text-3xl font-bold mb-2">Selamat datang, {admin?.fullName}!</h1>
-              <p className="text-gray-600 dark:text-gray-400">{admin?.email}</p>
-            </div>
-
-            {/* Overview Tab */}
-            {currentTab === "overview" && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm font-semibold">Total Menu</p>
-                        <p className="text-3xl font-bold mt-2">{menuItems.length}</p>
-                      </div>
-                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                        <ShoppingCart className="text-blue-600" size={24} />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm font-semibold">Total Pesanan</p>
-                        <p className="text-3xl font-bold mt-2">0</p>
-                      </div>
-                      <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                        <TrendingUp className="text-green-600" size={24} />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm font-semibold">Total Pengguna</p>
-                        <p className="text-3xl font-bold mt-2">0</p>
-                      </div>
-                      <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
-                        <Users className="text-red-600" size={24} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md">
-                  <h2 className="text-xl font-bold mb-4">Informasi Sistem</h2>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Status</span>
-                      <span className="font-semibold text-green-600">✓ Aktif</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Versi Aplikasi</span>
-                      <span className="font-semibold">v1.0.0</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Role Akun</span>
-                      <span className="font-semibold">Administrator</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Menu Management Tab */}
-            {currentTab === "menu" && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">Kelola Menu Makanan</h2>
-                  <button
-                    onClick={() => setShowAddMenu(!showAddMenu)}
-                    className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg flex items-center gap-2 transition"
-                  >
-                    <Plus size={20} />
-                    Tambah Menu
-                  </button>
-                </div>
-
-                {/* Add Menu Form */}
-                {showAddMenu && (
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md">
-                    <h3 className="text-lg font-bold mb-4">Tambah Menu Baru</h3>
-                    <form onSubmit={handleAddMenu} className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-semibold mb-2">Nama Menu</label>
-                          <input
-                            type="text"
-                            value={newMenu.name}
-                            onChange={(e) => setNewMenu({ ...newMenu, name: e.target.value })}
-                            placeholder="Contoh: Nasi Goreng"
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
-                            required
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-semibold mb-2">Kategori</label>
-                          <select
-                            value={newMenu.category}
-                            onChange={(e) => setNewMenu({ ...newMenu, category: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
-                          >
-                            <option value="makanan">Makanan</option>
-                            <option value="minuman">Minuman</option>
-                            <option value="dessert">Dessert</option>
-                            <option value="snack">Snack</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-semibold mb-2">Harga (Rp)</label>
-                          <input
-                            type="number"
-                            value={newMenu.price}
-                            onChange={(e) => setNewMenu({ ...newMenu, price: parseInt(e.target.value) })}
-                            placeholder="15000"
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
-                            required
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-semibold mb-2">Deskripsi Singkat</label>
-                          <input
-                            type="text"
-                            value={newMenu.description}
-                            onChange={(e) => setNewMenu({ ...newMenu, description: e.target.value })}
-                            placeholder="Contoh: Nasi goreng dengan telur dan sayuran"
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex gap-3">
-                        <button
-                          type="submit"
-                          className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg transition"
-                        >
-                          Simpan Menu
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowAddMenu(false)}
-                          className="bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-semibold px-6 py-2 rounded-lg transition"
-                        >
-                          Batal
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                )}
-
-                {/* Menu List */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {menuItems.map((item) => (
-                    <div key={item.id} className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md">
-                      <h3 className="text-lg font-bold mb-2">{item.name}</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{item.description}</p>
-                      <div className="space-y-2 mb-4">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">Kategori</span>
-                          <span className="font-semibold capitalize">{item.category}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">Harga</span>
-                          <span className="font-bold text-red-600">Rp {item.price.toLocaleString("id-ID")}</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition">
-                          <Edit2 size={16} />
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteMenu(item.id)}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition"
-                        >
-                          <Trash2 size={16} />
-                          Hapus
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {menuItems.length === 0 && (
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 shadow-md text-center">
-                    <ShoppingCart size={48} className="mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-600 dark:text-gray-400">Belum ada menu. Mulai dengan menambahkan menu baru.</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Orders Tab */}
-            {currentTab === "orders" && (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md">
-                <h2 className="text-2xl font-bold mb-4">Pesanan</h2>
-                <div className="text-center py-12">
-                  <ShoppingCart size={48} className="mx-auto mb-4 text-gray-400" />
-                  <p className="text-gray-600 dark:text-gray-400">Belum ada pesanan untuk ditampilkan.</p>
-                </div>
-              </div>
-            )}
-
-            {/* Settings Tab */}
-            {currentTab === "settings" && (
-              <div className="space-y-6">
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md">
-                  <h2 className="text-2xl font-bold mb-6">Pengaturan Admin</h2>
-
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-semibold mb-2">Nama Lengkap</label>
-                      <input
-                        type="text"
-                        defaultValue={admin?.fullName}
-                        disabled
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white cursor-not-allowed"
-                      />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Ubah di file: lib/adminCredentials.ts</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-semibold mb-2">Email Admin</label>
-                      <input
-                        type="email"
-                        defaultValue={admin?.email}
-                        disabled
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white cursor-not-allowed"
-                      />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Ubah di file: lib/adminCredentials.ts</p>
-                    </div>
-
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                      <p className="text-sm text-blue-800 dark:text-blue-300 font-semibold mb-2">💡 Tips Mengubah Kredensial Admin</p>
-                      <p className="text-sm text-blue-700 dark:text-blue-400">
-                        Untuk mengubah email dan password admin, buka file <code className="bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded">lib/adminCredentials.ts</code> dan ubah nilai di dalam object <code className="bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded">ADMIN_CREDENTIALS</code>.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md">
-                  <h3 className="text-lg font-bold mb-4">Keamanan</h3>
-                  <button className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg transition">
-                    Logout Semua Sesi
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
-        </div>
+
+          <nav className="mt-6 space-y-2">
+            {[
+              ["overview", "Dashboard", Home],
+              ["menu", "Kelola Menu", LayoutGrid],
+              ["orders", "Pesanan", ShoppingCart],
+              ["settings", "Pengaturan", Users],
+            ].map(([key, label, Icon]) => (
+              <button
+                key={key as string}
+                onClick={() => setCurrentTab(key as TabKey)}
+                className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold transition ${
+                  currentTab === key
+                    ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950"
+                    : "border border-slate-200 bg-white text-slate-600 hover:border-red-200 hover:text-red-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                }`}
+              >
+                <Icon size={18} />
+                <span>{label as string}</span>
+              </button>
+            ))}
+          </nav>
+
+          <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
+            <Link href="/" className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white">
+              <Home size={18} /> Beranda
+            </Link>
+            <button onClick={handleLogout} className="mt-2 flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10">
+              <LogOut size={18} /> Logout
+            </button>
+          </div>
+        </aside>
+
+        <main className="space-y-6">
+          <section className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-[0_18px_52px_-36px_rgba(15,23,42,0.5)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/85">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div className="space-y-3">
+                <p className="inline-flex rounded-full border border-red-200 bg-red-50 px-4 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">Dashboard admin</p>
+                <h1 className="text-3xl font-semibold tracking-tight text-slate-950 dark:text-white md:text-4xl">Selamat datang, {admin?.fullName}.</h1>
+                <p className="max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-300">Monitor sistem, menu, dan pengaturan operasional dari satu konsol yang lebih terstruktur.</p>
+              </div>
+              <button onClick={() => setCurrentTab("menu")} className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-950">
+                Tambah menu <Plus size={18} />
+              </button>
+            </div>
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {metrics.map(({ label, value, icon: Icon, tone }) => (
+              <div key={label} className="rounded-3xl border border-slate-200/80 bg-white/90 p-5 shadow-[0_18px_52px_-32px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-950/80">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{value}</p>
+                  </div>
+                  <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${tone} text-white shadow-lg`}>
+                    <Icon size={22} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </section>
+
+          {currentTab === "overview" && (
+            <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_0.95fr]">
+              <div className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-[0_18px_52px_-32px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-950/80">
+                <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Informasi sistem</h2>
+                <div className="mt-5 space-y-3 text-sm">
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+                    <span className="text-slate-500 dark:text-slate-400">Status</span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-300">Aktif</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+                    <span className="text-slate-500 dark:text-slate-400">Versi aplikasi</span>
+                    <span className="font-semibold">v1.0.0</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+                    <span className="text-slate-500 dark:text-slate-400">Role akun</span>
+                    <span className="font-semibold">Administrator</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-[0_18px_52px_-32px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-950/80">
+                <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Ringkasan menu</h2>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Data menu yang tersimpan di localStorage untuk sementara.</p>
+                <div className="mt-5 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+                  <ShoppingCart className="mx-auto h-10 w-10 text-slate-400" />
+                  <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{menuItems.length} menu terdaftar di sistem.</p>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {currentTab === "menu" && (
+            <section className="space-y-6">
+              <div className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-[0_18px_52px_-32px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-950/80">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Kelola menu makanan</h2>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Tambahkan menu baru dan kelola data yang sudah ada.</p>
+                  </div>
+                  <button onClick={() => setShowAddMenu(!showAddMenu)} className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-950">
+                    <Plus size={18} /> Tambah menu
+                  </button>
+                </div>
+
+                {showAddMenu && (
+                  <form onSubmit={handleAddMenu} className="mt-6 space-y-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <input value={newMenu.name} onChange={(e) => setNewMenu({ ...newMenu, name: e.target.value })} placeholder="Nama menu" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-red-400 focus:ring-4 focus:ring-red-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white" required />
+                      <select value={newMenu.category} onChange={(e) => setNewMenu({ ...newMenu, category: e.target.value })} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-red-400 focus:ring-4 focus:ring-red-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white">
+                        <option value="makanan">Makanan</option>
+                        <option value="minuman">Minuman</option>
+                        <option value="dessert">Dessert</option>
+                        <option value="snack">Snack</option>
+                      </select>
+                      <input type="number" value={newMenu.price} onChange={(e) => setNewMenu({ ...newMenu, price: parseInt(e.target.value) || 0 })} placeholder="Harga" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-red-400 focus:ring-4 focus:ring-red-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white" required />
+                      <input value={newMenu.description} onChange={(e) => setNewMenu({ ...newMenu, description: e.target.value })} placeholder="Deskripsi singkat" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-red-400 focus:ring-4 focus:ring-red-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white" />
+                    </div>
+                    <div className="flex gap-3">
+                      <button type="submit" className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700">Simpan menu</button>
+                      <button type="button" onClick={() => setShowAddMenu(false)} className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 dark:border-slate-800 dark:text-slate-200">Batal</button>
+                    </div>
+                  </form>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {menuItems.map((item) => (
+                  <div key={item.id} className="rounded-[1.5rem] border border-slate-200/80 bg-white/90 p-5 shadow-[0_18px_52px_-32px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-950/80">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-lg font-semibold text-slate-950 dark:text-white">{item.name}</p>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{item.description}</p>
+                      </div>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{item.category}</span>
+                    </div>
+                    <div className="mt-4 flex items-center justify-between text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">Harga</span>
+                      <span className="font-semibold text-red-600">Rp {item.price.toLocaleString("id-ID")}</span>
+                    </div>
+                    <div className="mt-5 flex gap-3">
+                      <button className="flex flex-1 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-red-200 hover:text-red-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                        <LayoutGrid size={16} /> Edit
+                      </button>
+                      <button onClick={() => handleDeleteMenu(item.id)} className="flex flex-1 items-center justify-center gap-2 rounded-full border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">
+                        <Trash2 size={16} /> Hapus
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {currentTab === "orders" && (
+            <section className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-[0_18px_52px_-32px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-950/80">
+              <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Pesanan</h2>
+              <div className="mt-5 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+                <ShoppingCart className="mx-auto h-10 w-10 text-slate-400" />
+                <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">Belum ada pesanan untuk ditampilkan.</p>
+              </div>
+            </section>
+          )}
+
+          {currentTab === "settings" && (
+            <section className="space-y-6">
+              <div className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-[0_18px_52px_-32px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-950/80">
+                <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Pengaturan admin</h2>
+                <div className="mt-5 space-y-5">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Nama Lengkap</label>
+                    <input defaultValue={admin?.fullName} disabled className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 disabled:cursor-not-allowed dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200" />
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Ubah dari file lib/adminCredentials.ts jika diperlukan.</p>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Email Admin</label>
+                    <input defaultValue={admin?.email} disabled className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 disabled:cursor-not-allowed dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-red-200 bg-red-50 p-6 dark:border-red-500/20 dark:bg-red-500/10">
+                <h3 className="text-lg font-semibold text-red-700 dark:text-red-200">Keamanan</h3>
+                <p className="mt-2 text-sm leading-6 text-red-700/90 dark:text-red-100/90">Logout akan menghapus kredensial admin dari browser ini.</p>
+                <button onClick={handleLogout} className="mt-4 inline-flex items-center justify-center rounded-full bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700">
+                  <LogOut className="mr-2 h-4 w-4" /> Logout
+                </button>
+              </div>
+            </section>
+          )}
+        </main>
       </div>
     </div>
   );

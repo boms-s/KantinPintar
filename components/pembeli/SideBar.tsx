@@ -1,10 +1,20 @@
 "use client";
 
-import { Home, UtensilsCrossed, ShoppingBag, ShoppingCart, Clock, User, HelpCircle, LogOut } from "lucide-react";
+import {
+  Home,
+  UtensilsCrossed,
+  ShoppingBag,
+  ShoppingCart,
+  Clock,
+  User,
+  HelpCircle,
+  LogOut,
+} from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { PembeliUser } from "@/lib/types";
-import { userStorage, cartStorage } from "@/lib/storage";
+import { logoutAction } from "@/app/api/actions";
+import { cartStorage } from "@/lib/storage";
+import Image from "next/image";
 
 interface NavItem {
   label: string;
@@ -13,10 +23,15 @@ interface NavItem {
   badge?: number;
 }
 
-export default function SideBar() {
+type SideBarUser = {
+  pembeli?: {
+    fullName: string;
+  } | null;
+};
+
+export default function SideBar({ user }: { user: SideBarUser | null }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [user] = useState<PembeliUser | null>(() => userStorage.get());
   const [cartCount, setCartCount] = useState<number>(() => {
     try {
       return cartStorage.getTotalQty();
@@ -41,9 +56,14 @@ export default function SideBar() {
   const base = "/pembeli/dashboard";
   const navItems: NavItem[] = [
     { label: "Dashboard", path: base, icon: Home },
-    { label: "Menu Makanan", path: `${base}/menu`, icon: UtensilsCrossed },
+    { label: "Warung", path: `${base}/menu`, icon: UtensilsCrossed },
     { label: "Pesanan Saya", path: `${base}/pesanan`, icon: ShoppingBag },
-    { label: "Keranjang", path: `${base}/keranjang`, icon: ShoppingCart, badge: cartCount },
+    {
+      label: "Keranjang",
+      path: `${base}/keranjang`,
+      icon: ShoppingCart,
+      badge: cartCount,
+    },
     { label: "Riwayat Pesanan", path: `${base}/riwayat`, icon: Clock },
     { label: "Profil", path: `${base}/profil`, icon: User },
     { label: "Bantuan", path: `${base}/bantuan`, icon: HelpCircle },
@@ -52,19 +72,32 @@ export default function SideBar() {
   const isActive = (path: string): boolean =>
     path === base ? pathname === base : pathname.startsWith(path);
 
-  const handleLogout = (): void => {
-    userStorage.clear();
+  const handleLogout = async (): Promise<void> => {
+    await logoutAction();
     cartStorage.clear();
     router.push("/pembeli/login");
   };
 
   return (
-    <aside className="w-56 bg-white border-r border-gray-200 flex flex-col p-4 shrink-0 h-screen sticky top-0">
+    <aside className="w-64 bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 shrink-0 shadow-sm">
       {/* Logo */}
-      <div className="flex items-center gap-2 mb-8 px-2">
-        <div className="w-7 h-7 bg-blue-600 rounded-md" />
-        <h1 className="font-bold text-blue-600 text-sm tracking-wide">SMART KANTIN</h1>
-      </div>
+      <div className="px-6 py-5 border-b border-slate-200">
+        <div className="flex items-center gap-3">
+          <Image
+            src="/images/logo.png"
+            alt="Logo Kantin Pintar"
+            width={44}
+            height={44}
+            className="object-contain"
+            priority
+          />
+
+          <div>
+            <h1 className="font-bold text-slate-950 text-sm">KANTIN PINTAR</h1>
+            <p className="text-xs text-slate-500">Dashboard Penjual</p>
+          </div>
+        </div>
+      </div>  
 
       {/* Navigation Menu */}
       <nav className="flex flex-col gap-1 flex-1">
@@ -93,10 +126,12 @@ export default function SideBar() {
       <div className="mt-4 border-t border-gray-100 pt-4">
         <div className="flex items-center gap-2 px-3 mb-3">
           <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">
-            {user?.fullName?.[0] || "U"}
+            {user?.pembeli?.fullName?.[0] || "U"}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-gray-800 truncate">{user?.fullName || "User"}</p>
+            <p className="text-xs font-medium text-gray-800 truncate">
+              {user?.pembeli?.fullName || "User"}
+            </p>
             <p className="text-[10px] text-gray-400">Pembeli</p>
           </div>
         </div>

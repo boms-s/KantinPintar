@@ -1,16 +1,32 @@
 "use client";
 
-import { Home, Box, ShoppingCart, BarChart2, User, LogOut } from "lucide-react";
+import {
+  Home,
+  Box,
+  ShoppingCart,
+  BarChart2,
+  User,
+  LogOut,
+  ChefHat,
+  TrendingUp,
+} from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { penjual as PenjualType } from "@/lib/types";
-import { penjualSession, orderStorage } from "@/lib/storage";
+import { logoutAction } from "@/app/api/actions";
+import { orderStorage } from "@/lib/storage";
+import Image from "next/image";
 
-export default function SideBar() {
+type PenjualSidebarUser = {
+  email: string;
+  penjual?: {
+    businessName: string;
+  } | null;
+} | null;
+
+export default function SideBar({ user }: { user: PenjualSidebarUser }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [seller] = useState<PenjualType | null>(() => penjualSession.get());
   const [pendingCount, setPendingCount] = useState<number>(() => {
     try {
       const orders = orderStorage.getAll();
@@ -36,64 +52,100 @@ export default function SideBar() {
   const base = "/penjual/dashboard";
   const navItems = [
     { label: "Dashboard", path: base, icon: Home },
-    { label: "Pesanan", path: `${base}/pesanan`, icon: Box, badge: pendingCount },
-    { label: "Kelola Menu", path: `${base}/kelolaMenu`, icon: ShoppingCart },
-    { label: "Penjualan", path: `${base}/pnejualan`, icon: BarChart2 },
-    { label: "Profil", path: `${base}/profil`, icon: User },
+    {
+      label: "Pesanan",
+      path: `${base}/pesanan`,
+      icon: Box,
+      badge: pendingCount,
+    },
+    { label: "Kelola Menu", path: `${base}/kelolaMenu`, icon: ChefHat },
+    {
+      label: "Kategori Menu",
+      path: `${base}/kelolaKategori`,
+      icon: ShoppingCart,
+    },
+    { label: "Laporan Penjualan", path: `${base}/penjualan`, icon: TrendingUp },
+    { label: "Profil Toko", path: `${base}/profil`, icon: User },
   ];
 
-  const isActive = (path: string) => (path === base ? pathname === base : pathname.startsWith(path));
+  const isActive = (path: string) =>
+    path === base ? pathname === base : pathname.startsWith(path);
 
-  const handleLogout = () => {
-    penjualSession.clear();
+  const handleLogout = async () => {
+    await logoutAction();
     router.push("/penjual/login");
   };
 
   return (
-    <aside className="w-56 bg-white border-r border-gray-200 flex flex-col p-4 shrink-0 h-screen sticky top-0">
-      <div className="flex items-center gap-2 mb-8 px-2">
-        <div className="w-7 h-7 bg-purple-600 rounded-md" />
-        <h1 className="font-bold text-purple-600 text-sm tracking-wide">SMART KANTIN</h1>
+    <aside className="w-64 bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 shrink-0 shadow-sm">
+      {/* Logo */}
+      <div className="px-6 py-5 border-b border-slate-200">
+        <div className="flex items-center gap-3">
+          <Image
+            src="/images/logo.png"
+            alt="Logo Kantin Pintar"
+            width={44}
+            height={44}
+            className="object-contain"
+            priority
+          />
+
+          <div>
+            <h1 className="font-bold text-slate-950 text-sm">KANTIN PINTAR</h1>
+            <p className="text-xs text-slate-500">Dashboard Penjual</p>
+          </div>
+        </div>
       </div>
 
-      <nav className="flex flex-col gap-1 flex-1">
+      {/* Navigation */}
+      <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
         {navItems.map(({ label, path, icon: Icon, badge }) => (
           <button
             key={label}
             onClick={() => router.push(path)}
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-left transition-colors w-full ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
               isActive(path)
-                ? "bg-purple-50 text-purple-600 font-medium"
-                : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                ? "bg-violet-50 text-violet-600 border border-violet-200 shadow-sm"
+                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
             }`}
           >
-            <Icon size={16} />
-            <span className="flex-1">{label}</span>
+            <Icon className="h-5 w-5 shrink-0" />
+            <span className="flex-1 text-left">{label}</span>
             {badge && badge > 0 && (
-              <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                {badge}
+              <span className="inline-flex items-center justify-center min-w-max bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                {badge > 9 ? "9+" : badge}
               </span>
             )}
           </button>
         ))}
       </nav>
 
-      <div className="mt-4 border-t border-gray-100 pt-4">
-        <div className="flex items-center gap-2 px-3 mb-3">
-          <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-xs font-bold">
-            {seller?.fullName?.[0] || "P"}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-gray-800 truncate">{seller?.fullName || "Penjual"}</p>
-            <p className="text-[10px] text-gray-400">Penjual</p>
+      {/* User Section */}
+      <div className="border-t border-slate-200 p-4">
+        <div className="rounded-lg bg-slate-50 p-4 mb-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-linear-to-br from-violet-100 to-violet-50 flex items-center justify-center text-violet-600 font-bold text-sm shrink-0">
+              {(user?.penjual?.businessName ||
+                user?.email ||
+                "P")[0].toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-900 truncate">
+                {user?.penjual?.businessName || "Penjual"}
+              </p>
+              <p className="text-xs text-slate-500 truncate">
+                {user?.email || ""}
+              </p>
+            </div>
           </div>
         </div>
+
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-red-500 hover:bg-red-50 w-full transition-colors"
+          className="w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
         >
-          <LogOut size={16} />
-          <span>Keluar</span>
+          <LogOut className="h-4 w-4" />
+          Keluar
         </button>
       </div>
     </aside>

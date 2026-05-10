@@ -3,15 +3,22 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { penjualStorage } from "@/lib/storage";
+import { registerPenjualAction } from "@/app/api/actions";
+import { AuthShell } from "@/components/ui/auth-shell";
 
 export default function penjualRegister() {
   const router = useRouter();
 
   const [formData, setFormData] = useState({
-    fullName: "",
+    username: "",
+    businessName: "",
     email: "",
+    phone: "",
+    address: "",
+    city: "",
     password: "",
+    confirmPassword: "",
+    terms: false,
   });
 
   const [error, setError] = useState("");
@@ -23,52 +30,178 @@ export default function penjualRegister() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const penjuals = penjualStorage.getAll();
-
-    // cek email sudah ada
-    const exist = penjuals.find((s: any) => s.email === formData.email);
-
-    if (exist) {
-      setError("Email sudah terdaftar!");
+    if (!formData.username || !formData.businessName || !formData.email || !formData.phone || !formData.address || !formData.city || !formData.password) {
+      setError("Harap isi semua field yang diperlukan.");
       return;
     }
 
-    // simpan penjual baru
-    penjualStorage.add({
-      id: crypto.randomUUID(),
-      fullName: formData.fullName,
+    if (formData.password !== formData.confirmPassword) {
+      setError("Password dan konfirmasi password tidak cocok.");
+      return;
+    }
+
+    if (!formData.terms) {
+      setError("Anda harus menyetujui Syarat & Ketentuan.");
+      return;
+    }
+
+    const result = await registerPenjualAction({
+      username: formData.username,
       email: formData.email,
       password: formData.password,
-      role: "penjual",
-    } as any);
+      businessName: formData.businessName,
+      phone: formData.phone,
+      address: formData.address,
+      city: formData.city,
+    });
 
-    // redirect ke login
-    router.push("/penjual/login");
+    if (!result.success) {
+      setError(result.message || "Registrasi gagal");
+      return;
+    }
+
+    router.push("/penjual/dashboard");
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-purple-50 px-4">
-      <div className="bg-white p-8 rounded-xl shadow w-full max-w-md">
-        <h1 className="text-2xl font-bold text-purple-600 mb-2">Daftar Penjual</h1>
-        <p className="text-gray-500 text-sm mb-6">Buat akun untuk mulai jualan di Smart Kantin</p>
+    <AuthShell
+      badge="Daftar penjual"
+      title="Bangun toko penjual dengan tampilan yang lebih serius"
+      description="Daftar untuk mengelola menu, menerima pesanan, dan menata profil toko di satu tempat yang lebih modern."
+      accent="purple"
+      asideTitle="Gabung sebagai penjual"
+      asideDescription="Setelah daftar, akun penjual dapat langsung dipakai untuk login dan mengelola operasional menu."
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {error && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">
+            {error}
+          </div>
+        )}
 
-        {error && <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>}
+        <div className="space-y-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Username</label>
+            <input
+              type="text"
+              name="username"
+              placeholder="username unik"
+              onChange={handleChange}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-violet-500 dark:focus:ring-violet-500/20"
+              required
+            />
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="text" name="fullName" placeholder="Nama Lengkap" onChange={handleChange} className="w-full border p-3 rounded" required />
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Nama Toko</label>
+            <input
+              type="text"
+              name="businessName"
+              placeholder="Nama bisnis / kantin"
+              onChange={handleChange}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-violet-500 dark:focus:ring-violet-500/20"
+              required
+            />
+          </div>
 
-          <input type="email" name="email" placeholder="Email" onChange={handleChange} className="w-full border p-3 rounded" required />
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Email</label>
+            <input
+              type="email"
+              name="email"
+              placeholder="Email toko"
+              onChange={handleChange}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-violet-500 dark:focus:ring-violet-500/20"
+              required
+            />
+          </div>
 
-          <input type="password" name="password" placeholder="Password" onChange={handleChange} className="w-full border p-3 rounded" required />
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Nomor Telepon</label>
+            <input
+              type="tel"
+              name="phone"
+              placeholder="08xxxxxxxxxx"
+              onChange={handleChange}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-violet-500 dark:focus:ring-violet-500/20"
+              required
+            />
+          </div>
 
-          <button className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded font-semibold">Daftar</button>
-        </form>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Alamat</label>
+            <textarea
+              name="address"
+              placeholder="Alamat lengkap toko"
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-violet-500 dark:focus:ring-violet-500/20"
+              rows={3}
+              required
+            />
+          </div>
 
-        <p className="text-center text-sm mt-6">Sudah punya akun? <Link href="/penjual/login" className="text-purple-600 font-bold">Login di sini</Link></p>
-      </div>
-    </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Kota</label>
+            <input
+              type="text"
+              name="city"
+              placeholder="Kota domisili"
+              onChange={handleChange}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-violet-500 dark:focus:ring-violet-500/20"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Password</label>
+            <input
+              type="password"
+              name="password"
+              placeholder="Password"
+              onChange={handleChange}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-violet-500 dark:focus:ring-violet-500/20"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Konfirmasi Password</label>
+            <input
+              type="password"
+              name="confirmPassword"
+              placeholder="Ulangi password"
+              onChange={handleChange}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-violet-500 dark:focus:ring-violet-500/20"
+              required
+            />
+          </div>
+
+          <label className="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300">
+            <input
+              type="checkbox"
+              name="terms"
+              checked={formData.terms}
+              onChange={(e) => setFormData({ ...formData, terms: e.target.checked })}
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+            />
+            <span>Saya setuju dengan Syarat & Ketentuan</span>
+          </label>
+        </div>
+
+        <button className="inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+          Daftar penjual
+        </button>
+
+        <p className="text-center text-sm text-slate-600 dark:text-slate-300">
+          Sudah punya akun?{" "}
+          <Link href="/penjual/login" className="font-semibold text-violet-600 hover:text-violet-700 dark:text-violet-300 dark:hover:text-violet-200">
+            Login di sini
+          </Link>
+        </p>
+      </form>
+    </AuthShell>
   );
 }

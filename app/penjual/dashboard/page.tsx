@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { MenuItem } from "@/lib/types";
-import { menuStorage, orderStorage, penjualSession } from "@/lib/storage";
+import { menuStorage, orderStorage } from "@/lib/storage";
 import SalesChart from "@/components/penjual/SalesChart";
-import { BarChart2 } from "lucide-react";
+import { ArrowRight, BarChart3, CalendarDays, CircleDollarSign, Package, Plus, Settings2, Trash2, Clock, TrendingUp, Users, Zap, ChefHat } from "lucide-react";
+import { getCurrentUserAction } from "@/app/api/actions";
 
 type OrderItem = { penjualId?: string; name?: string; price?: number; qty?: number };
 
@@ -18,16 +19,46 @@ type SellerOrder = {
   createdAt?: string;
 };
 
+type CurrentSeller = {
+  id: string;
+  email: string;
+  penjual?: {
+    id: string;
+    businessName: string;
+    address: string;
+    city: string;
+    isOpen: boolean;
+    operatingHours?: string | null;
+  } | null;
+};
+
 export default function PenjualDashboard() {
   const router = useRouter();
 
-  const seller = penjualSession.get();
+  const [seller, setSeller] = useState<CurrentSeller | null>(null);
   const allOrders: SellerOrder[] = orderStorage.getAll();
   const [allMenus, setAllMenus] = useState<MenuItem[]>(() => menuStorage.getAll());
-  const [activeTab, setActiveTab] = useState<"overview" | "orders" | "menu" | "sales" | "profil">("overview");
 
   const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
   const [menuForm, setMenuForm] = useState({ name: "", price: "", available: true });
+
+  useEffect(() => {
+    const loadSession = async () => {
+      const result = await getCurrentUserAction();
+      if (!result.success || !result.data || result.data.role !== "PENJUAL") {
+        router.replace("/penjual/login");
+        return;
+      }
+
+      setSeller({
+        id: result.data.penjual?.id || result.data.id,
+        email: result.data.email,
+        penjual: result.data.penjual || null,
+      });
+    };
+
+    loadSession();
+  }, [router]);
 
   // Orders that include this seller's items
   const sellerOrders = useMemo(() => {
@@ -46,7 +77,8 @@ export default function PenjualDashboard() {
     const completed = sellerOrders.filter((o) => o.status === "completed" || o.status === "selesai").length;
     const pending = sellerOrders.filter((o) => o.status === "pending" || o.status === "confirmed").length;
     const totalIncome = sellerOrders.reduce((acc, o) => acc + (o.totalPrice || 0), 0);
-    return { totalOrders, completed, pending, totalIncome };
+    const avgPerOrder = completed > 0 ? Math.round(totalIncome / completed) : 0;
+    return { totalOrders, completed, pending, totalIncome, avgPerOrder };
   }, [sellerOrders]);
 
   // prepare chart data: last 7 completed orders (or pad with zeros)
@@ -67,7 +99,7 @@ export default function PenjualDashboard() {
       name: menuForm.name,
       price: Number(menuForm.price),
       penjualId: seller.id,
-      penjualName: seller.fullName || (seller as { name?: string }).name || "",
+      penjualName: seller.penjual?.businessName || seller.email || "",
       available: menuForm.available,
     } as MenuItem;
 
@@ -101,149 +133,216 @@ export default function PenjualDashboard() {
 
   if (!seller) {
     return (
-      <div className="p-6">
-        <p className="text-red-500">Anda belum login sebagai penjual. Silakan login di <a className="text-blue-600" href="/penjual/login">/penjual/login</a></p>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6">
+        <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-lg">
+          <p className="text-sm font-semibold uppercase tracking-wider text-violet-600">Akses penjual</p>
+          <h1 className="mt-3 text-2xl font-semibold text-slate-950">Anda belum login</h1>
+          <p className="mt-3 text-sm text-slate-600">Silakan login dulu agar dashboard toko bisa dibuka.</p>
+          <a href="/penjual/login" className="mt-6 inline-flex items-center justify-center rounded-lg bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
+            Ke halaman login
+          </a>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Dashboard Penjual</h1>
-          <p className="text-gray-600">Halo, {seller.fullName} — kelola tokomu di sini.</p>
-        </div>
-      </div>
-
-      {/* Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div style={{ background: 'linear-gradient(90deg,#7c3aed,#4f46e5)' }} className="text-white p-4 rounded shadow flex items-center gap-3">
-          <div className="p-2 bg-white bg-opacity-10 rounded">
-            <BarChart2 size={20} />
-          </div>
+    <div className="space-y-6 py-2">
+      {/* Header Section */}
+      <section className="rounded-2xl border border-slate-200 bg-linear-to-br from-white to-slate-50 p-6 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs opacity-90">Total Pesanan</p>
-            <p className="text-2xl font-bold">{stats.totalOrders}</p>
+            <div className="inline-flex rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700 mb-3">
+              Dashboard Penjual
+            </div>
+            <h1 className="text-3xl font-bold text-slate-950">
+              Selamat datang, {seller.penjual?.businessName || seller.email}
+            </h1>
+            <p className="mt-2 text-slate-600">Kelola menu, pesanan, dan pantau performa penjualan Anda di sini.</p>
+          </div>
+          <button
+            onClick={() => router.push("/penjual/dashboard/kelolaMenu")}
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 w-fit"
+          >
+            <Plus className="h-4 w-4" /> Tambah Menu
+          </button>
+        </div>
+      </section>
+
+      {/* KPI Stats Grid */}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-600">Total Pesanan</p>
+              <p className="mt-2 text-3xl font-bold text-slate-950">{stats.totalOrders}</p>
+            </div>
+            <div className="rounded-lg bg-violet-100 p-3">
+              <BarChart3 className="h-5 w-5 text-violet-600" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-sm text-gray-500">Menunggu</p>
-          <p className="text-2xl font-bold">{stats.pending}</p>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-600">Menunggu Konfirmasi</p>
+              <p className="mt-2 text-3xl font-bold text-slate-950">{stats.pending}</p>
+            </div>
+            <div className="rounded-lg bg-amber-100 p-3">
+              <Clock className="h-5 w-5 text-amber-600" />
+            </div>
+          </div>
         </div>
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-sm text-gray-500">Selesai</p>
-          <p className="text-2xl font-bold">{stats.completed}</p>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-600">Selesai</p>
+              <p className="mt-2 text-3xl font-bold text-slate-950">{stats.completed}</p>
+            </div>
+            <div className="rounded-lg bg-emerald-100 p-3">
+              <Package className="h-5 w-5 text-emerald-600" />
+            </div>
+          </div>
         </div>
-        <div className="bg-white p-4 rounded shadow">
-          <p className="text-sm text-gray-500">Total Pendapatan</p>
-          <p className="text-2xl font-bold">Rp {stats.totalIncome.toLocaleString("id-ID")}</p>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-600">Total Pendapatan</p>
+              <p className="mt-2 text-2xl font-bold text-slate-950">Rp {(stats.totalIncome / 1000).toLocaleString("id-ID")}K</p>
+            </div>
+            <div className="rounded-lg bg-cyan-100 p-3">
+              <CircleDollarSign className="h-5 w-5 text-cyan-600" />
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* Chart */}
-      <div className="mb-6">
-        <SalesChart data={chartData} />
-      </div>
+      {/* Chart & Quick Nav */}
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        {/* Chart */}
+        <div className="xl:col-span-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-950 flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-violet-600" />
+                Tren Pendapatan
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">Data 7 pesanan selesai terakhir</p>
+            </div>
+            <button
+              onClick={() => router.push("/penjual/dashboard/penjualan")}
+              className="text-sm font-medium text-violet-600 hover:text-violet-700 transition flex items-center gap-1"
+            >
+              Lihat Detail <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+          <SalesChart data={chartData} />
+        </div>
 
-      {/* Tabs */}
-      <div className="flex gap-3 mb-6">
-        <button onClick={() => setActiveTab("overview")} className={`px-3 py-1 rounded ${activeTab === "overview" ? "bg-blue-600 text-white" : "bg-white"}`}>Overview</button>
-        <button onClick={() => setActiveTab("orders")} className={`px-3 py-1 rounded ${activeTab === "orders" ? "bg-blue-600 text-white" : "bg-white"}`}>Pesanan</button>
-        <button onClick={() => setActiveTab("menu")} className={`px-3 py-1 rounded ${activeTab === "menu" ? "bg-blue-600 text-white" : "bg-white"}`}>Kelola Menu</button>
-        <button onClick={() => setActiveTab("sales")} className={`px-3 py-1 rounded ${activeTab === "sales" ? "bg-blue-600 text-white" : "bg-white"}`}>Penjualan</button>
-        <button onClick={() => setActiveTab("profil")} className={`px-3 py-1 rounded ${activeTab === "profil" ? "bg-blue-600 text-white" : "bg-white"}`}>Profil</button>
-      </div>
-
-      {/* Orders Tab */}
-      {activeTab === "orders" && (
-        <div>
-          <h2 className="text-xl font-bold mb-4">Pesanan Masuk</h2>
-          {sellerOrders.length === 0 ? (
-            <p className="text-gray-500">Belum ada pesanan untuk toko Anda.</p>
-          ) : (
-            sellerOrders.map((o) => (
-              <div key={o.id} className="bg-white p-4 rounded mb-3">
-                <div className="flex justify-between">
-                  <div>
-                    <p className="font-bold">Order {o.id}</p>
-                    <p className="text-sm text-gray-500">{o.items.length} item • Rp {(o.totalPrice||0).toLocaleString("id-ID")}</p>
-                  </div>
-                  <div className="text-sm text-gray-600">{o.status}</div>
-                </div>
+        {/* Quick Navigation */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-slate-950 mb-4">Navigasi Cepat</h3>
+          <div className="space-y-3">
+            <button
+              onClick={() => router.push("/penjual/dashboard/pesanan")}
+              className="w-full flex items-center gap-3 rounded-lg bg-linear-to-r from-blue-50 to-cyan-50 border border-blue-200 p-4 text-left hover:border-blue-300 hover:shadow-md transition group"
+            >
+              <div className="rounded-lg bg-blue-100 p-2">
+                <Package className="h-5 w-5 text-blue-600" />
               </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Menu Tab */}
-      {activeTab === "menu" && (
-        <div>
-          <h2 className="text-xl font-bold mb-4">Kelola Menu Toko</h2>
-
-          <div className="bg-white p-4 rounded mb-6">
-            <h3 className="font-semibold mb-2">Tambah / Edit Menu</h3>
-            <div className="flex gap-2 flex-wrap">
-              <input placeholder="Nama" value={menuForm.name} onChange={(e)=>setMenuForm({...menuForm, name: e.target.value})} className="border px-2 py-1" />
-              <input placeholder="Harga" value={menuForm.price} onChange={(e)=>setMenuForm({...menuForm, price: e.target.value})} className="border px-2 py-1" />
-              <label className="flex items-center gap-2"><input type="checkbox" checked={menuForm.available} onChange={(e)=>setMenuForm({...menuForm, available: e.target.checked})} /> Tersedia</label>
-              {editingMenuId ? (
-                <>
-                  <button onClick={saveEditMenu} className="bg-green-600 text-white px-3 py-1 rounded">Simpan</button>
-                  <button onClick={()=>{setEditingMenuId(null); setMenuForm({name:'', price:'', available:true})}} className="px-3 py-1 rounded border">Batal</button>
-                </>
-              ) : (
-                <button onClick={saveNewMenu} className="bg-blue-600 text-white px-3 py-1 rounded">Tambah Menu</button>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {sellerMenus.map((m) => (
-              <div key={m.id} className="bg-white p-4 rounded flex justify-between items-center">
-                <div>
-                  <p className="font-semibold">{m.name}</p>
-                  <p className="text-sm text-gray-500">Rp {m.price.toLocaleString("id-ID")} • {m.available ? 'Tersedia' : 'Habis'}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={()=>startEditMenu(m)} className="px-3 py-1 rounded border">Edit</button>
-                  <button onClick={()=>deleteMenu(m.id)} className="px-3 py-1 rounded text-red-600 border">Hapus</button>
-                </div>
+              <div className="flex-1">
+                <p className="font-semibold text-slate-950">Pesanan</p>
+                <p className="text-xs text-slate-600">{stats.pending} menunggu</p>
               </div>
-            ))}
+              <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition" />
+            </button>
+
+            <button
+              onClick={() => router.push("/penjual/dashboard/kelolaMenu")}
+              className="w-full flex items-center gap-3 rounded-lg bg-linear-to-r from-orange-50 to-amber-50 border border-orange-200 p-4 text-left hover:border-orange-300 hover:shadow-md transition group"
+            >
+              <div className="rounded-lg bg-orange-100 p-2">
+                <ChefHat className="h-5 w-5 text-orange-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-slate-950">Kelola Menu</p>
+                <p className="text-xs text-slate-600">{sellerMenus.length} menu aktif</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition" />
+            </button>
+
+            <button
+              onClick={() => router.push("/penjual/dashboard/penjualan")}
+              className="w-full flex items-center gap-3 rounded-lg bg-linear-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-4 text-left hover:border-emerald-300 hover:shadow-md transition group"
+            >
+              <div className="rounded-lg bg-emerald-100 p-2">
+                <TrendingUp className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-slate-950">Laporan Penjualan</p>
+                <p className="text-xs text-slate-600">Analisis & export</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition" />
+            </button>
+
+            <button
+              onClick={() => router.push("/penjual/dashboard/profil")}
+              className="w-full flex items-center gap-3 rounded-lg bg-linear-to-r from-pink-50 to-rose-50 border border-pink-200 p-4 text-left hover:border-pink-300 hover:shadow-md transition group"
+            >
+              <div className="rounded-lg bg-pink-100 p-2">
+                <Users className="h-5 w-5 text-pink-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-slate-950">Profil Toko</p>
+                <p className="text-xs text-slate-600">Edit informasi</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-slate-600 transition" />
+            </button>
           </div>
         </div>
-      )}
+      </section>
 
-      {/* Sales Tab */}
-      {activeTab === "sales" && (
-        <div>
-          <h2 className="text-xl font-bold mb-4">Penjualan</h2>
-          <p className="mb-4">Total pendapatan: Rp {stats.totalIncome.toLocaleString("id-ID")}</p>
-          {sellerOrders.filter(o=>o.status==='completed' || o.status==='selesai').map(o=> (
-            <div key={o.id} className="bg-white p-3 rounded mb-2">
-              <p className="font-medium">Order {o.id} — Rp {(o.totalPrice||0).toLocaleString('id-ID')}</p>
+      {/* Summary Cards */}
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-violet-100 p-2">
+              <Zap className="h-5 w-5 text-violet-600" />
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Profil Tab */}
-      {activeTab === "profil" && (
-        <div>
-          <h2 className="text-xl font-bold mb-4">Profil Penjual</h2>
-          <div className="bg-white p-4 rounded shadow">
-            <p className="font-semibold">Nama: {seller.fullName || (seller as { name?: string }).name}</p>
-            <p className="text-sm text-gray-500">Email: {seller.email || '-'}</p>
-            <p className="text-sm text-gray-500">Role: {seller.role || 'penjual'}</p>
-            <div className="mt-4">
-              <button onClick={() => { localStorage.removeItem('sk_current_penjual'); router.push('/penjual/login'); }} className="px-3 py-1 rounded bg-red-600 text-white">Logout</button>
+            <div>
+              <p className="text-sm text-slate-600">Menu Aktif</p>
+              <p className="text-2xl font-bold text-slate-950">{sellerMenus.length}</p>
             </div>
           </div>
         </div>
-      )}
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-emerald-100 p-2">
+              <Package className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-600">Penjualan Selesai</p>
+              <p className="text-2xl font-bold text-slate-950">{stats.completed}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-cyan-100 p-2">
+              <CircleDollarSign className="h-5 w-5 text-cyan-600" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-600">Rata-rata Per Order</p>
+              <p className="text-2xl font-bold text-slate-950">Rp {(stats.avgPerOrder / 1000).toLocaleString("id-ID")}K</p>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

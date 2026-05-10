@@ -1,173 +1,106 @@
 import Link from "next/link";
-import { Zap, Smartphone, Clock } from "lucide-react";
+import { ArrowRight, Clock3, Rocket, ShieldCheck, FileChartColumnIncreasing } from "lucide-react";
+
+import { FeatureCard } from "@/components/ui/feature-card";
 
 export default function HeroSection() {
   return (
-    <section className="bg-gradient-to-br from-blue-50 to-white dark:from-gray-900 dark:to-black">
-      <div className="max-w-7xl mx-auto px-6 py-20">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Left side - Content */}
-          <div>
-            <h1 className="text-5xl lg:text-6xl font-bold mb-4">
-              <span className="text-blue-600">SMART</span>{" "}
-              <span className="text-gray-900 dark:text-white">KANTIN</span>
-            </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300 mb-12 leading-relaxed">
-              Platform digital untuk memesan makanan kantin dengan cepat, mudah,
-              dan tanpa antre.
-            </p>
-
-            {/* Features Grid */}
-            <div className="grid grid-cols-3 gap-6 mb-12">
-              <div className="text-center">
-                <div className="bg-blue-100 dark:bg-blue-900 w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Zap className="w-8 h-8 text-blue-600" />
-                </div>
-                <h3 className="font-bold text-gray-900 dark:text-white mb-2">Cepat</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Pesan dalam hitungan detik
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="bg-blue-100 dark:bg-blue-900 w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Smartphone className="w-8 h-8 text-blue-600" />
-                </div>
-                <h3 className="font-bold text-gray-900 dark:text-white mb-2">Mudah</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Interface mudah digunakan
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="bg-blue-100 dark:bg-blue-900 w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <Clock className="w-8 h-8 text-blue-600" />
-                </div>
-                <h3 className="font-bold text-gray-900 dark:text-white mb-2">
-                  Tanpa Antre
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Lebih efisien waktu
-                </p>
-              </div>
-            </div>
-
-            {/* Login Section */}
-            <div>
-              <p className="text-gray-700 dark:text-gray-300 mb-4 font-medium">
-                Welcome to Smartkantin click button login here
-              </p>
-              <Link
-                href="/pembeli/login"
-                className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300 w-full lg:w-auto text-center"
-              >
-                 Login
-              </Link>
-              <p className="text-gray-600 dark:text-gray-400 mt-4">
-                atau{" "}
-                <Link
-                  href="/pembeli/register/"
-                  className="text-blue-600 hover:text-blue-700 font-semibold dark:text-blue-400"
-                >
-                  Daftar di sini
-                </Link>
-              </p>
-            </div>
+    <section className="relative">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-14 px-6 py-20 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:py-28">
+        <div className="space-y-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm backdrop-blur dark:border-blue-500/20 dark:bg-slate-950/70 dark:text-slate-200">
+            <Rocket className="h-4 w-4 text-blue-600" />
+            Solusi pesanan kantin yang cepat dan rapi
           </div>
 
-          {/* Right side - Phone Mockup */}
-          <div className="hidden lg:flex justify-center items-center">
-            <div className="relative">
-              {/* Phone Frame */}
-              <div className="w-80 bg-black rounded-3xl border-8 border-gray-800 shadow-2xl overflow-hidden">
-                {/* Phone Screen */}
-                <div className="bg-white rounded-2xl m-2 overflow-hidden">
-                  {/* Status Bar */}
-                  <div className="bg-gradient-to-r from-blue-50 to-white px-6 py-3 flex justify-between items-center text-xs font-semibold text-gray-900 border-b">
-                    <span>9:41</span>
-                    <div className="flex gap-1">
-                      <div className="w-4 h-3 border border-gray-900 rounded-sm flex items-center justify-center">
-                        <div className="w-2 h-1 bg-gray-900"></div>
-                      </div>
-                      <span>📶</span>
-                      <span>🔋</span>
+          <div className="space-y-5">
+            <h1 className="max-w-2xl text-5xl font-semibold tracking-tight text-slate-950 md:text-6xl lg:text-7xl dark:text-white">
+              Kantin <span className="text-blue-600 dark:text-blue-400">Pintar</span> Revolusi Digital untuk Ekosistem Kantin Modern.
+            </h1>
+            <p className="max-w-xl text-lg leading-8 text-slate-600 md:text-xl dark:text-slate-300">
+              Transformasi transaksi kantin konvensional menjadi otomatis dan transparan. Solusi cerdas bagi penjual modern dan pembeli yang dinamis.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <FeatureCard
+              icon={ShieldCheck}
+              title="Keamanan Bertransaksi"
+              description="Kemudahan transaksi dengan keamanan data yang terjamin untuk semua pengguna."
+              tone="emerald"
+            />
+            <FeatureCard
+              icon={FileChartColumnIncreasing}
+              title="Inventori & Laporan Real-Time"
+              description="Pantau penjualan dan stok dengan laporan real-time yang mudah dipahami."
+              tone="blue"
+            />
+            <FeatureCard
+              icon={Clock3}
+              title="Kemudahan & Efisiensi"
+              description="Pesan tanpa antre dengan proses pemesanan yang cepat dan efisien."
+              tone="amber"
+            />
+          </div>
+
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <Link
+              href="/pembeli/register"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 transition duration-300 hover:-translate-y-0.5 hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+            >
+              Daftar sekarang sebagai pembeli
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/penjual/register"
+              className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white/80 px-6 py-3 text-sm font-semibold text-slate-700 backdrop-blur transition duration-300 hover:border-blue-300 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200"
+            >
+              Daftar sebagai penjual
+            </Link>
+          </div>
+        </div>
+
+        <div className="hidden lg:flex justify-center">
+          <div className="relative w-full max-w-md rounded-[2rem] border border-slate-200/80 bg-white/80 p-4 shadow-[0_24px_80px_-32px_rgba(15,23,42,0.55)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/70">
+            <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 text-xs font-semibold text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                <span>09:41</span>
+                <span>Smart Kantin</span>
+              </div>
+
+              <div className="space-y-5 px-5 py-6">
+                <div>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Selamat datang kembali</p>
+                  <h2 className="text-2xl font-semibold text-slate-950 dark:text-white">Siap pesan tanpa antre?</h2>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                  <div className="flex items-center justify-between text-sm">
+                    <div>
+                      <p className="font-semibold text-slate-900 dark:text-white">Promo makan siang</p>
+                      <p className="text-slate-500 dark:text-slate-400">Hemat hingga 30% hari ini</p>
                     </div>
+                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-500/10 dark:text-blue-200">Aktif</span>
                   </div>
+                </div>
 
-                  {/* Screen Content */}
-                  <div className="p-6 bg-gray-50 min-h-96">
-                    <div className="mb-6">
-                      <h2 className="text-xl font-bold text-gray-900">
-                        Hai Stranger
-                      </h2>
-                      <p className="text-sm text-gray-600">
-                        Mau makan apa hari ini?
-                      </p>
-                    </div>
-
-                    {/* Search Bar */}
-                    <div className="bg-white rounded-lg p-3 mb-6 border border-gray-200">
-                      <p className="text-sm text-gray-500">
-                        Cari makanan atau minuman...
-                      </p>
-                    </div>
-
-                    {/* Promo Banner */}
-                    <div className="bg-blue-600 text-white rounded-lg p-4 mb-6">
-                      <h3 className="font-bold text-sm">Diskon Spesial Hari Ini!</h3>
-                      <p className="text-xs">Diskon hingga 30% untuk semua menu</p>
-                      <button className="mt-2 bg-white text-blue-600 px-3 py-1 rounded text-xs font-bold">
-                        Lihat Promo
+                <div className="space-y-3">
+                  {[
+                    { title: "Nasi Ayam Geprek", price: "Rp 15.000", tone: "bg-orange-200" },
+                    { title: "Mie Goreng Spesial", price: "Rp 12.000", tone: "bg-amber-200" },
+                    { title: "Es Jeruk Segar", price: "Rp 5.000", tone: "bg-sky-200" },
+                  ].map((item) => (
+                    <div key={item.title} className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
+                      <div className={`h-12 w-12 rounded-2xl ${item.tone}`} />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-950 dark:text-white">{item.title}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{item.price}</p>
+                      </div>
+                      <button className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white transition hover:bg-blue-700">
+                        +
                       </button>
                     </div>
-
-                    {/* Menu Items */}
-                    <h3 className="font-bold text-gray-900 mb-3">Menu Populer</h3>
-                    <div className="space-y-3">
-                      <div className="flex gap-3">
-                        <div className="w-12 h-12 bg-orange-200 rounded"></div>
-                        <div className="flex-1">
-                          <p className="text-xs font-bold text-gray-900">
-                            Nasi Ayam Geprek
-                          </p>
-                          <p className="text-xs text-gray-600">Rp 15.000</p>
-                        </div>
-                        <button className="bg-blue-600 text-white w-6 h-6 rounded-full text-xs flex items-center justify-center">
-                          +
-                        </button>
-                      </div>
-                      <div className="flex gap-3">
-                        <div className="w-12 h-12 bg-yellow-200 rounded"></div>
-                        <div className="flex-1">
-                          <p className="text-xs font-bold text-gray-900">
-                            Mie Goreng Spesial
-                          </p>
-                          <p className="text-xs text-gray-600">Rp 12.000</p>
-                        </div>
-                        <button className="bg-blue-600 text-white w-6 h-6 rounded-full text-xs flex items-center justify-center">
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bottom Navigation */}
-                  <div className="bg-white border-t border-gray-200 px-6 py-4 flex justify-around items-center text-center">
-                    <div className="text-xs text-gray-600">
-                      <span className="text-lg">🏠</span>
-                      <p className="text-xs">Beranda</p>
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      <span className="text-lg">📋</span>
-                      <p className="text-xs">Pesanan</p>
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      <span className="text-lg">🛒</span>
-                      <p className="text-xs">Keranjang</p>
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      <span className="text-lg">👤</span>
-                      <p className="text-xs">Profil</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>

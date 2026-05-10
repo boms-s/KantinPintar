@@ -24,6 +24,14 @@ export interface penjual {
   image?: string;
   rating?: number;
   location?: string;
+  businessName?: string;
+  address?: string;
+  city?: string;
+  isOpen?: boolean;
+  operatingHours?: string | null;
+  user?: {
+    email?: string;
+  };
 }
 
 // Menu/Food Item Type
@@ -32,6 +40,7 @@ export interface MenuItem {
   name: string;
   description?: string;
   price: number;
+  cost?: number;
   image?: string;
   penjualId: string;
   penjualName?: string;

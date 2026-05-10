@@ -1,64 +1,62 @@
 import { CheckCircle } from "lucide-react";
 import Link from "next/link";
 
+import { SectionHeading } from "@/components/ui/section-heading";
+
 export default function AppPromoSection() {
   return (
-    <section className="bg-gradient-to-r from-blue-500 to-blue-600 py-16">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Left side - Content */}
-          <div>
-            <h2 className="text-4xl font-bold text-white mb-6">
-              Pesan sekarang, ambil tanpa antre!
-            </h2>
-            <p className="text-blue-100 text-lg mb-8">
-              Nikmati pengalaman baru memesan makanan di kantin. Lebih cepat,
-              mudah, dan efisien.
-            </p>
+    <section className="px-6 py-20">
+      <div className="mx-auto max-w-7xl rounded-[2rem] border border-blue-200/60 bg-slate-950 px-6 py-12 text-white shadow-[0_30px_80px_-36px_rgba(15,23,42,0.8)] lg:px-10 dark:border-blue-500/20 dark:bg-linear-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+          <div className="space-y-8">
+            <SectionHeading
+              eyebrow="Akses cepat"
+              title="Pesan sekarang, ambil tanpa antre"
+              description="Pengguna bisa fokus memilih menu, sementara alur pesanan dan pengambilan dibuat lebih ringkas dan jelas."
+              className="max-w-2xl"
+            />
 
-            {/* Features List */}
-            <div className="space-y-4 mb-8">
-              <div className="flex items-center gap-4">
-                <CheckCircle className="w-6 h-6 text-white flex-shrink-0" />
-                <span className="text-white">Pesan melalui aplikasi mobile</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <CheckCircle className="w-6 h-6 text-white flex-shrink-0" />
-                <span className="text-white">Bayar dengan berbagai metode</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <CheckCircle className="w-6 h-6 text-white flex-shrink-0" />
-                <span className="text-white">Lacak status pesanan real-time</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <CheckCircle className="w-6 h-6 text-white flex-shrink-0" />
-                <span className="text-white">Dapatkan poin reward setiap pemesanan</span>
-              </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                "Pesan melalui antarmuka yang cepat dibaca",
+                "Bayar dengan skenario yang siap dikembangkan",
+                "Lacak status pesanan secara real-time",
+                "Dapatkan poin reward setiap pemesanan",
+              ].map((item) => (
+                <div key={item} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />
+                  <span className="text-sm leading-6 text-slate-200">{item}</span>
+                </div>
+              ))}
             </div>
 
-            {/* CTA Button */}
-            <Link
-              href="/login"
-              className="inline-block bg-white hover:bg-gray-100 text-blue-600 font-bold py-3 px-8 rounded-lg transition duration-300"
-            >
-              Mulai Sekarang
-            </Link>
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <Link
+                href="/pembeli/login"
+                className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-950 transition duration-300 hover:-translate-y-0.5 hover:bg-slate-100"
+              >
+                Mulai Sekarang
+              </Link>
+              <Link
+                href="/pembeli/dashboard/menu"
+                className="inline-flex items-center justify-center rounded-full border border-white/15 px-6 py-3 text-sm font-semibold text-white transition duration-300 hover:border-white/30 hover:bg-white/10"
+              >
+                Lihat menu
+              </Link>
+            </div>
           </div>
 
-          {/* Right side - Illustration */}
-          <div className="flex justify-center items-center">
-            <div className="relative">
-              {/* Shopping Bag Icon */}
-              <div className="w-48 h-48 bg-white rounded-full flex items-center justify-center shadow-2xl">
-                <div className="text-7xl">
-                  <span className="text-6xl">🛍️</span>
-                </div>
+          <div className="relative flex justify-center">
+            <div className="absolute inset-x-10 top-10 h-40 rounded-full bg-blue-500/30 blur-3xl" />
+            <div className="relative flex h-80 w-80 items-center justify-center rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur">
+              <div className="absolute inset-6 rounded-[1.5rem] border border-dashed border-white/15" />
+              <div className="relative z-10 flex h-44 w-44 items-center justify-center rounded-full bg-white text-6xl shadow-2xl shadow-blue-950/30">
+                🛍️
               </div>
-              {/* Floating elements */}
-              <div className="absolute top-10 right-10 bg-yellow-300 rounded-full w-16 h-16 flex items-center justify-center text-3xl animate-bounce">
+              <div className="absolute right-10 top-10 inline-flex h-14 w-14 items-center justify-center rounded-full bg-emerald-300 text-2xl text-slate-950 shadow-lg shadow-emerald-950/20">
                 ✓
               </div>
-              <div className="absolute bottom-10 left-10 bg-green-300 rounded-full w-12 h-12 flex items-center justify-center text-2xl">
+              <div className="absolute bottom-12 left-10 inline-flex h-12 w-12 items-center justify-center rounded-full bg-amber-300 text-xl shadow-lg shadow-amber-950/20">
                 ⭐
               </div>
             </div>

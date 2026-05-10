@@ -1,0 +1,507 @@
+// This is a Prisma schema file for KantinPintar Platform
+// docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ============================================
+// ENUMS - Business Logic Types
+// ============================================
+
+enum UserRole {
+  PEMBELI
+  PENJUAL
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING        // Baru dibuat, belum dikonfirmasi
+  CONFIRMED      // Dikonfirmasi oleh penjual
+  PREPARING      // Sedang disiapkan
+  READY          // Siap diambil/diantar
+  COMPLETED      // Selesai
+  CANCELLED      // Dibatalkan
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  EWALLETS
+}
+
+enum DeliveryType {
+  PICKUP
+  DELIVERY
+}
+
+// ============================================
+// CORE USERS & AUTHENTICATION
+// ============================================
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  email     String   @unique
+  password  String   // Should be hashed
+  role      UserRole
+
+  // Relationship fields
+  pembeli   Pembeli?
+  penjual   Penjual?
+  admin     Admin?
+
+  // Activity tracking
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([username])
+}
+
+// ============================================
+// PEMBELI (BUYER) PROFILE
+// ============================================
+
+model Pembeli {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Profile information
+  fullName          String
+  phone             String   @unique
+  address           String?
+  city              String?
+  photoUrl          String?
+
+  // Statistics
+  totalSpent        Float    @default(0)
+  totalOrders       Int      @default(0)
+  averageRating     Float    @default(0)
+
+  // Relationships
+  carts             CartItem[]
+  orders            Order[]
+  reviews           Review[]
+  favoriteMenus     FavoriteMenu[]
+  address_          Address[]
+
+  // Metadata
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@fulltext([fullName, phone])
+}
+
+// ============================================
+// PENJUAL (SELLER) PROFILE
+// ============================================
+
+model Penjual {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Business information
+  businessName      String   @unique
+  description       String?
+  phone             String   @unique
+  address           String
+  city              String
+  photoUrl          String?
+
+  // Ratings & statistics
+  averageRating     Float    @default(0)
+  totalReviews      Int      @default(0)
+  totalSales        Float    @default(0)
+  totalOrders       Int      @default(0)
+  isVerified        Boolean  @default(false)
+
+  // Business status
+  isOpen            Boolean  @default(true)
+  operatingHours    String?  // JSON: {mon: "08:00-17:00", ...}
+
+  // Relationships
+  menus             Menu[]
+  menuCategories    MenuCategory[]
+  orders            Order[]
+  reviews           Review[]
+  promotions        Promotion[]
+
+  // Metadata
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isVerified])
+  @@index([isOpen])
+  @@fulltext([businessName, description])
+}
+
+// ============================================
+// ADMIN PROFILE
+// ============================================
+
+model Admin {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Admin info
+  fullName  String
+  department String?
+  permissions String? // JSON array of permissions
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ============================================
+// MENU & CATEGORIES
+// ============================================
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  description String?
+  icon      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@fulltext([name, description])
+}
+
+model MenuCategory {
+  id          String   @id @default(cuid())
+  
+  penjualId   String
+  penjual     Penjual  @relation(fields: [penjualId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  icon        String?
+  
+  // Relationships
+  menus       Menu[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([penjualId, name])
+  @@index([penjualId])
+  @@fulltext([name, description])
+}
+
+model Menu {
+  id            String   @id @default(cuid())
+  
+  // Basic info
+  name          String
+  description   String?
+  price         Float
+  
+  // Category & seller
+  menuCategoryId String
+  menuCategory  MenuCategory @relation(fields: [menuCategoryId], references: [id], onDelete: Restrict)
+  
+  penjualId     String
+  penjual       Penjual  @relation(fields: [penjualId], references: [id], onDelete: Cascade)
+
+  // Inventory
+  stock         Int      @default(0)
+  // HPP / Cost of Goods Sold per unit
+  cost          Float    @default(0)
+  
+  // Media
+  image         String?  @db.LongText
+  
+  // Ratings
+  averageRating Float    @default(0)
+  totalReviews  Int      @default(0)
+
+  // Status
+  isAvailable   Boolean  @default(true)
+  
+  // Relationships
+  orderItems    OrderItem[]
+  cartItems     CartItem[]
+  reviews       Review[]
+  favorites     FavoriteMenu[]
+  promotions    PromotionItem[]
+
+  // Metadata
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([penjualId])
+  @@index([menuCategoryId])
+  @@index([isAvailable])
+  @@fulltext([name, description])
+}
+
+// ============================================
+// SHOPPING CART
+// ============================================
+
+model CartItem {
+  id        String   @id @default(cuid())
+  
+  pembeliId String
+  pembeli   Pembeli  @relation(fields: [pembeliId], references: [id], onDelete: Cascade)
+  
+  menuId    String
+  menu      Menu     @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  
+  quantity  Int
+  price     Float    // Snapshot price saat ditambahkan
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pembeliId, menuId])
+  @@index([pembeliId])
+  @@index([menuId])
+}
+
+// ============================================
+// FAVORITES
+// ============================================
+
+model FavoriteMenu {
+  id        String   @id @default(cuid())
+  
+  pembeliId String
+  pembeli   Pembeli  @relation(fields: [pembeliId], references: [id], onDelete: Cascade)
+  
+  menuId    String
+  menu      Menu     @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([pembeliId, menuId])
+  @@index([pembeliId])
+  @@index([menuId])
+}
+
+// ============================================
+// ORDERS (TRANSACTIONS)
+// ============================================
+
+model Order {
+  id                String        @id @default(cuid())
+  
+  // Transaction code
+  transactionCode   String        @unique @default(cuid())
+  
+  // Participants
+  pembeliId         String
+  pembeli           Pembeli       @relation(fields: [pembeliId], references: [id])
+  
+  penjualId         String
+  penjual           Penjual       @relation(fields: [penjualId], references: [id])
+
+  // Order details
+  status            OrderStatus   @default(PENDING)
+  deliveryType      DeliveryType  @default(PICKUP)
+  
+  // Pricing
+  subtotal          Float
+  tax               Float         @default(0)
+  discountAmount    Float         @default(0)
+  shippingCost      Float         @default(0)
+  totalPrice        Float
+  
+  // Payment
+  paymentMethod     PaymentMethod
+  paymentStatus     PaymentStatus @default(PENDING)
+  
+  // Delivery
+  deliveryAddress   String?
+  estimatedTime     DateTime?
+  completedAt       DateTime?
+
+  // Notes
+  notes             String?
+
+  // Relationships
+  items             OrderItem[]
+  payment           Payment?
+  review            Review?
+
+  // Metadata
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([pembeliId])
+  @@index([penjualId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  menuId      String
+  menu        Menu    @relation(fields: [menuId], references: [id])
+  
+  quantity    Int
+  unitPrice   Float
+  subtotal    Float
+  
+  createdAt   DateTime @default(now())
+
+  @@index([orderId])
+  @@index([menuId])
+}
+
+// ============================================
+// PAYMENTS
+// ============================================
+
+model Payment {
+  id              String        @id @default(cuid())
+  
+  orderId         String        @unique
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  method          PaymentMethod
+  amount          Float
+  status          PaymentStatus @default(PENDING)
+  
+  // Payment proof
+  proofUrl        String?
+  transactionId   String?
+  
+  // Timestamps
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+}
+
+// ============================================
+// REVIEWS & RATINGS
+// ============================================
+
+model Review {
+  id        String  @id @default(cuid())
+  
+  orderId   String  @unique
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  menuId    String
+  menu      Menu    @relation(fields: [menuId], references: [id])
+  
+  pembeliId String
+  pembeli   Pembeli @relation(fields: [pembeliId], references: [id])
+  
+  penjualId String
+  penjual   Penjual @relation(fields: [penjualId], references: [id])
+  
+  rating    Int     // 1-5
+  comment   String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([menuId])
+  @@index([pembeliId])
+  @@index([penjualId])
+}
+
+// ============================================
+// PROMOTIONS & DISCOUNTS
+// ============================================
+
+model Promotion {
+  id          String   @id @default(cuid())
+  
+  penjualId   String
+  penjual     Penjual  @relation(fields: [penjualId], references: [id], onDelete: Cascade)
+  
+  title       String
+  description String?
+  
+  // Discount rules
+  discountType String  // "PERCENTAGE" atau "FIXED"
+  discountValue Float
+  maxDiscount  Float?
+  
+  // Validity
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(true)
+  
+  // Limitations
+  minPurchase Float?
+  maxUses     Int?
+  usedCount   Int      @default(0)
+  
+  // Items
+  items       PromotionItem[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([penjualId])
+  @@index([isActive])
+}
+
+model PromotionItem {
+  id          String     @id @default(cuid())
+  
+  promotionId String
+  promotion   Promotion  @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  
+  menuId      String
+  menu        Menu       @relation(fields: [menuId], references: [id])
+
+  @@unique([promotionId, menuId])
+  @@index([promotionId])
+  @@index([menuId])
+}
+
+// ============================================
+// ADDRESSES
+// ============================================
+
+model Address {
+  id        String  @id @default(cuid())
+  
+  pembeliId String
+  pembeli   Pembeli @relation(fields: [pembeliId], references: [id], onDelete: Cascade)
+  
+  label     String  // "Rumah", "Kantor", dll
+  address   String
+  city      String
+  zipCode   String?
+  isDefault Boolean @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pembeliId])
+}

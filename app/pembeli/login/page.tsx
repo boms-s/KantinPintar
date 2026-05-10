@@ -4,7 +4,8 @@ import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { userStorage, penjualSession } from "@/lib/storage";
+import { loginAction } from "@/app/api/actions";
+import { AuthShell } from "@/components/ui/auth-shell";
 
 export default function LoginPembeli() {
   const [showPassword, setShowPassword] = useState(false);
@@ -27,153 +28,118 @@ export default function LoginPembeli() {
     setError("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    setTimeout(() => {
-      try {
-        const usersRaw = localStorage.getItem("users") || "[]";
-        const users = JSON.parse(usersRaw);
+    try {
+      const result = await loginAction({
+        email: formData.email,
+        password: formData.password,
+      });
 
-        const user = users.find(
-          (u: any) =>
-            u.email === formData.email &&
-            u.password === formData.password
-        );
-
-        if (!user) {
-          setError("Email atau password salah.");
-          setLoading(false);
-          return;
-        }
-
-        // Simpan user login dengan key yang dipakai dashboard
-        userStorage.set({
-          id: user.id || user.email,
-          email: user.email,
-          fullName: user.fullName,
-          phone: user.phone,
-          address: user.address,
-          role: "pembeli",
-        });
-
-        // Bersihin role lain
-        try {
-          localStorage.removeItem("currentAdmin");
-        } catch {}
-        penjualSession.clear();
-
-        // Redirect ke dashboard pembeli
-        router.push("/pembeli/dashboard");
-      } catch (err) {
-        console.error(err);
-        setError("Terjadi kesalahan saat login.");
-      } finally {
-        setLoading(false);
+      if (!result.success || !result.user) {
+        setError(result.message || "Email atau password salah.");
+        return;
       }
-    }, 800);
+
+      if (result.user.role === "PEMBELI") {
+        router.push("/pembeli/dashboard");
+      } else if (result.user.role === "PENJUAL") {
+        router.push("/penjual/dashboard");
+      } else {
+        router.push("/admin/dashboard");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Terjadi kesalahan saat login.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ background: "linear-gradient(135deg, #eff6ff 0%, #ffffff 50%, #eff6ff 100%)" }}
+    <AuthShell
+      badge="Akses pembeli"
+      title="Login pembeli yang lebih nyaman"
+      description="Masuk untuk memesan makanan favorit, melihat keranjang, dan melanjutkan pesanan dalam satu alur yang rapi."
+      accent="blue"
+      asideTitle="Masuk ke akun pembeli"
+      asideDescription="Gunakan akun pembeli untuk mengakses dashboard, menu, keranjang, dan riwayat pesanan."
     >
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
-        
-        {/* Logo */}
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white">
-            🍽️
-          </div>
-          <span className="font-bold">
-            SMART <span className="text-gray-500">KANTIN</span>
-          </span>
-        </div>
-
-        {/* Heading */}
-        <h1 className="text-2xl font-bold mb-2 text-blue-600">
-          Login Pembeli
-        </h1>
-        <p className="text-gray-500 text-sm mb-6">
-          Masuk untuk memesan makanan favoritmu
-        </p>
-
-        {/* Error */}
+      <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
-          <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">
             {error}
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          
-          {/* Email */}
-          <div className="relative">
-            <Mail className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="Email"
-              className="w-full pl-12 pr-4 py-3 border rounded-lg"
-            />
+        <div className="space-y-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Email</label>
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="nama@email.com"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-12 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
+              />
+            </div>
           </div>
 
-          {/* Password */}
-          <div className="relative">
-            <Lock className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
-            <input
-              type={showPassword ? "text" : "password"}
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Password"
-              className="w-full pl-12 pr-12 py-3 border rounded-lg"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-3.5"
-            >
-              {showPassword ? <EyeOff /> : <Eye />}
-            </button>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Password</label>
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Masukkan password"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-12 py-3 pr-12 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-3.5 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            </div>
           </div>
+        </div>
 
-          {/* Remember */}
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              name="remember"
-              checked={formData.remember}
-              onChange={handleChange}
-            />
-            Ingat saya
-          </label>
+        <label className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+          <input
+            type="checkbox"
+            name="remember"
+            checked={formData.remember}
+            onChange={handleChange}
+            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />
+          Ingat saya di perangkat ini
+        </label>
 
-          {/* Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg"
-          >
-            {loading ? "Loading..." : "Login"}
-          </button>
-        </form>
+        <button
+          type="submit"
+          disabled={loading}
+          className="inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+        >
+          {loading ? "Memverifikasi..." : "Login sekarang"}
+        </button>
 
-        {/* Register */}
-        <p className="text-center text-sm mt-6">
+        <p className="text-center text-sm text-slate-600 dark:text-slate-300">
           Belum punya akun?{" "}
-          <Link href="/pembeli/register" className="text-blue-600 font-bold">
+          <Link href="/pembeli/register" className="font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200">
             Daftar di sini
           </Link>
         </p>
-
-      </div>
-    </div>
+      </form>
+    </AuthShell>
   );
 }

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ADMIN_CREDENTIALS } from "@/lib/adminCredentials";
 import { userStorage, penjualSession } from "@/lib/storage";
+import { AuthShell } from "@/components/ui/auth-shell";
 
 export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -65,99 +66,87 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ background: "linear-gradient(135deg, #fff1f2 0%, #ffffff 50%, #fff1f2 100%)" }}
+    <AuthShell
+      badge="Portal admin"
+      title="Panel admin dengan akses yang lebih tegas"
+      description="Masuk untuk mengelola sistem, memeriksa data, dan menjaga platform tetap rapi dari satu titik kontrol."
+      accent="red"
+      asideTitle="Akses admin"
+      asideDescription="Gunakan kredensial admin untuk membuka panel pengelolaan sistem dan menyusun kontrol operasional."
     >
-      
-      <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8">
-
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center text-white">
-            <Shield size={20} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              Admin Portal
-            </h1>
-            <p className="text-sm text-gray-500">Kantin Pintar</p>
-          </div>
-        </div>
-
-        {/* Error */}
+      <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
-          <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">
             {error}
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          
-          {/* Email */}
-          <div className="relative">
-            <Mail className="absolute left-4 top-3.5 text-gray-400" />
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="admin@kantin.com"
-              className="w-full pl-12 pr-4 py-3 border rounded-lg"
-              required
-            />
+        <div className="space-y-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Email Admin</label>
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="admin@kantinpintar.com"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-12 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-400 focus:ring-4 focus:ring-red-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-red-500 dark:focus:ring-red-500/20"
+                required
+              />
+            </div>
           </div>
 
-          {/* Password */}
-          <div className="relative">
-            <Lock className="absolute left-4 top-3.5 text-gray-400" />
-            <input
-              type={showPassword ? "text" : "password"}
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Password"
-              className="w-full pl-12 pr-12 py-3 border rounded-lg"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-3.5"
-            >
-              {showPassword ? <EyeOff /> : <Eye />}
-            </button>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Password</label>
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Password"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-12 py-3 pr-12 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-400 focus:ring-4 focus:ring-red-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-red-500 dark:focus:ring-red-500/20"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-3.5 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            </div>
           </div>
+        </div>
 
-          {/* Remember */}
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              name="remember"
-              checked={formData.remember}
-              onChange={handleChange}
-            />
-            Ingat saya
-          </label>
+        <label className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+          <input
+            type="checkbox"
+            name="remember"
+            checked={formData.remember}
+            onChange={handleChange}
+            className="h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500"
+          />
+          Ingat sesi admin ini
+        </label>
 
-          {/* Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-red-600 text-white py-3 rounded-lg"
-          >
-            {loading ? "Verifikasi..." : "Masuk Admin"}
-          </button>
-        </form>
+        <button
+          type="submit"
+          disabled={loading}
+          className="inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+        >
+          {loading ? "Memverifikasi..." : "Masuk admin"}
+        </button>
 
-        {/* Back */}
-        <p className="text-center text-sm mt-6">
-          <Link href="/" className="text-red-600 font-bold">
-            ← Kembali ke Beranda
+        <p className="text-center text-sm text-slate-600 dark:text-slate-300">
+          <Link href="/" className="font-semibold text-red-600 hover:text-red-700 dark:text-red-300 dark:hover:text-red-200">
+            ← Kembali ke beranda
           </Link>
         </p>
-      </div>
-    </div>
+      </form>
+    </AuthShell>
   );
 }

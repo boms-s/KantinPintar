@@ -123,8 +123,33 @@
   }
   body {
     @apply bg-background text-foreground;
+    @apply min-h-screen;
+    background-image:
+      radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 30%),
+      radial-gradient(circle at top right, rgba(14, 165, 233, 0.06), transparent 26%);
+    background-attachment: fixed;
   }
   html {
+    scroll-behavior: smooth;
+  }
+  
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.18), transparent 85%);
+  }
+  
+  html {
     @apply font-sans;
+  }
+  
+  ::selection {
+    background: rgba(37, 99, 235, 0.2);
+    color: inherit;
   }
 }
