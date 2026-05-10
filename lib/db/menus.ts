@@ -76,6 +76,7 @@ export const menuDb = {
             businessName: true,
             address: true,
             city: true,
+            photoUrl: true,
             isOpen: true,
             operatingHours: true,
             averageRating: true,

@@ -11,9 +11,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { logoutAction } from "@/app/api/actions";
-import { cartStorage } from "@/lib/storage";
 import Image from "next/image";
 
 interface NavItem {
@@ -26,32 +24,19 @@ interface NavItem {
 type SideBarUser = {
   pembeli?: {
     fullName: string;
+    photoUrl?: string | null;
   } | null;
 };
 
-export default function SideBar({ user }: { user: SideBarUser | null }) {
+export default function SideBar({
+  user,
+  cartQty = 0,
+}: {
+  user: SideBarUser | null;
+  cartQty?: number;
+}) {
   const router = useRouter();
   const pathname = usePathname();
-  const [cartCount, setCartCount] = useState<number>(() => {
-    try {
-      return cartStorage.getTotalQty();
-    } catch {
-      return 0;
-    }
-  });
-
-  useEffect(() => {
-    const updateCartCount = () => {
-      try {
-        setCartCount(cartStorage.getTotalQty());
-      } catch {
-        setCartCount(0);
-      }
-    };
-
-    window.addEventListener("sk_cart_updated", updateCartCount);
-    return () => window.removeEventListener("sk_cart_updated", updateCartCount);
-  }, []);
 
   const base = "/pembeli/dashboard";
   const navItems: NavItem[] = [
@@ -62,7 +47,7 @@ export default function SideBar({ user }: { user: SideBarUser | null }) {
       label: "Keranjang",
       path: `${base}/keranjang`,
       icon: ShoppingCart,
-      badge: cartCount,
+      badge: cartQty,
     },
     { label: "Riwayat Pesanan", path: `${base}/riwayat`, icon: Clock },
     { label: "Profil", path: `${base}/profil`, icon: User },
@@ -74,7 +59,6 @@ export default function SideBar({ user }: { user: SideBarUser | null }) {
 
   const handleLogout = async (): Promise<void> => {
     await logoutAction();
-    cartStorage.clear();
     router.push("/pembeli/login");
   };
 
@@ -91,31 +75,30 @@ export default function SideBar({ user }: { user: SideBarUser | null }) {
             className="object-contain"
             priority
           />
-
           <div>
             <h1 className="font-bold text-slate-950 text-sm">KANTIN PINTAR</h1>
-            <p className="text-xs text-slate-500">Dashboard Penjual</p>
+            <p className="text-xs text-slate-500">Dashboard Pembeli</p>
           </div>
         </div>
-      </div>  
+      </div>
 
       {/* Navigation Menu */}
-      <nav className="flex flex-col gap-1 flex-1">
+      <nav className="flex flex-col gap-1 flex-1 overflow-y-auto p-3">
         {navItems.map(({ label, path, icon: Icon, badge }) => (
           <button
             key={path}
             onClick={() => router.push(path)}
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-left transition-colors w-full ${
+            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-all w-full group ${
               isActive(path)
-                ? "bg-blue-50 text-blue-600 font-medium"
-                : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                ? "bg-blue-50 text-blue-700 font-semibold shadow-sm"
+                : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
             }`}
           >
-            <Icon size={16} />
+            <Icon size={17} />
             <span className="flex-1">{label}</span>
-            {badge && badge > 0 && (
-              <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                {badge}
+            {badge !== undefined && badge > 0 && (
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 text-[10px] font-bold text-white">
+                {badge > 99 ? "99+" : badge}
               </span>
             )}
           </button>
@@ -123,13 +106,17 @@ export default function SideBar({ user }: { user: SideBarUser | null }) {
       </nav>
 
       {/* User Profile & Logout */}
-      <div className="mt-4 border-t border-gray-100 pt-4">
-        <div className="flex items-center gap-2 px-3 mb-3">
-          <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">
-            {user?.pembeli?.fullName?.[0] || "U"}
+      <div className="border-t border-gray-100 p-3">
+        <div className="mb-2 flex items-center gap-2.5 rounded-xl bg-gray-50 px-3 py-2.5">
+          <div className="relative flex h-8 w-8 shrink-0 overflow-hidden items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
+            {user?.pembeli?.photoUrl ? (
+              <Image src={user.pembeli.photoUrl} alt="Profile" fill className="object-cover" sizes="32px" />
+            ) : (
+              user?.pembeli?.fullName?.[0]?.toUpperCase() || "U"
+            )}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-gray-800 truncate">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-gray-800">
               {user?.pembeli?.fullName || "User"}
             </p>
             <p className="text-[10px] text-gray-400">Pembeli</p>
@@ -137,9 +124,9 @@ export default function SideBar({ user }: { user: SideBarUser | null }) {
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-red-500 hover:bg-red-50 w-full transition-colors"
+          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-red-500 transition-colors hover:bg-red-50"
         >
-          <LogOut size={16} />
+          <LogOut size={15} />
           <span>Keluar</span>
         </button>
       </div>

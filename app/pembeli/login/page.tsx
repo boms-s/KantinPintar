@@ -1,11 +1,29 @@
 "use client";
 
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { loginAction } from "@/app/api/actions";
 import { AuthShell } from "@/components/ui/auth-shell";
+
+const formVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 15 },
+  show: { 
+    opacity: 1, 
+    y: 0,
+    transition: { type: "spring", stiffness: 300, damping: 24 }
+  },
+};
 
 export default function LoginPembeli() {
   const [showPassword, setShowPassword] = useState(false);
@@ -61,85 +79,123 @@ export default function LoginPembeli() {
 
   return (
     <AuthShell
-      badge="Akses pembeli"
-      title="Login pembeli yang lebih nyaman"
-      description="Masuk untuk memesan makanan favorit, melihat keranjang, dan melanjutkan pesanan dalam satu alur yang rapi."
+      badge="Portal Pembeli"
+      title="Selamat Datang Kembali di Smart Kantin"
+      description="Nikmati kemudahan memesan makanan tanpa perlu mengantre lama. Cukup masuk, pilih, dan ambil!"
       accent="blue"
-      asideTitle="Masuk ke akun pembeli"
-      asideDescription="Gunakan akun pembeli untuk mengakses dashboard, menu, keranjang, dan riwayat pesanan."
+      asideTitle="Akses Akun Pembeli"
+      asideDescription="Gunakan kredensial Anda untuk masuk ke sistem pemesanan cerdas kami."
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <motion.form 
+        variants={formVariants}
+        initial="hidden"
+        animate="show"
+        onSubmit={handleSubmit} 
+        className="space-y-6"
+      >
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">
+          <motion.div 
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200"
+          >
+            <div className="h-2 w-2 rounded-full bg-red-500" />
             {error}
-          </div>
+          </motion.div>
         )}
 
-        <div className="space-y-4">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Email</label>
-            <div className="relative">
-              <Mail className="pointer-events-none absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+        <div className="space-y-5">
+          <motion.div variants={itemVariants}>
+            <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Email Address</label>
+            <div className="relative group">
+              <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-blue-500">
+                <Mail className="h-5 w-5" />
+              </div>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="nama@email.com"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-12 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
+                required
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-12 py-3.5 text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-blue-500 dark:focus:bg-slate-900"
               />
             </div>
-          </div>
+          </motion.div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Password</label>
-            <div className="relative">
-              <Lock className="pointer-events-none absolute left-4 top-3.5 h-5 w-5 text-slate-400" />
+          <motion.div variants={itemVariants}>
+            <div className="flex items-center justify-between">
+              <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Password</label>
+              <Link href="#" className="text-xs font-semibold text-blue-600 hover:underline dark:text-blue-400">Lupa password?</Link>
+            </div>
+            <div className="relative group">
+              <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-blue-500">
+                <Lock className="h-5 w-5" />
+              </div>
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="Masukkan password"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-12 py-3 pr-12 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
+                placeholder="••••••••"
+                required
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-12 py-3.5 pr-12 text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-blue-500 dark:focus:bg-slate-900"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-3.5 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none"
               >
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
 
-        <label className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+        <motion.div variants={itemVariants} className="flex items-center gap-3">
           <input
             type="checkbox"
+            id="remember"
             name="remember"
             checked={formData.remember}
             onChange={handleChange}
-            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            className="h-4 w-4 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-700"
           />
-          Ingat saya di perangkat ini
-        </label>
+          <label htmlFor="remember" className="text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+            Ingat saya di perangkat ini
+          </label>
+        </motion.div>
 
-        <button
+        <motion.button
+          variants={itemVariants}
+          whileHover={{ scale: 1.01, y: -2 }}
+          whileTap={{ scale: 0.98 }}
           type="submit"
           disabled={loading}
-          className="inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+          className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-blue-600 px-8 py-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 hover:shadow-xl disabled:opacity-70"
         >
-          {loading ? "Memverifikasi..." : "Login sekarang"}
-        </button>
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white"></span>
+              Sedang Memverifikasi...
+            </span>
+          ) : (
+            <>
+              Login Sekarang
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </>
+          )}
+        </motion.button>
 
-        <p className="text-center text-sm text-slate-600 dark:text-slate-300">
-          Belum punya akun?{" "}
-          <Link href="/pembeli/register" className="font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200">
-            Daftar di sini
-          </Link>
-        </p>
-      </form>
+        <motion.div variants={itemVariants} className="pt-4 text-center">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Belum memiliki akun?{" "}
+            <Link href="/pembeli/register" className="font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+              Daftar Gratis
+            </Link>
+          </p>
+        </motion.div>
+      </motion.form>
     </AuthShell>
   );
 }

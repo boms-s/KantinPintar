@@ -5,6 +5,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MenuItem } from "@/lib/types";
 import { getCurrentUserAction, getSellerMenusAction, createMenuAction, updateMenuAction, deleteMenuAction, getSellerCategoriesAction, createMenuCategoryAction } from "@/app/api/actions";
+import { Utensils, CupSoda, Cookie, CakeSlice, Package, Coffee, Pizza, Croissant, IceCream, Sandwich } from "lucide-react";
+
+const iconMap: Record<string, any> = {
+	Utensils, CupSoda, Cookie, CakeSlice, Package, Coffee, Pizza, Croissant, IceCream, Sandwich
+};
+const iconOptionsList = Object.keys(iconMap);
 
 type Category = { id: string; name: string };
 
@@ -48,7 +54,7 @@ export default function KelolaMenuPage() {
 	const [showQuickCategoryForm, setShowQuickCategoryForm] = useState(false);
 	const [quickCategoryName, setQuickCategoryName] = useState("");
 	const [quickCategoryDescription, setQuickCategoryDescription] = useState("");
-	const [quickCategoryIcon, setQuickCategoryIcon] = useState("🍜");
+	const [quickCategoryIcon, setQuickCategoryIcon] = useState("Utensils");
 	const [quickCategorySaving, setQuickCategorySaving] = useState(false);
 	const [imageFile, setImageFile] = useState<File | null>(null);
 	
@@ -128,7 +134,7 @@ export default function KelolaMenuPage() {
 		setShowQuickCategoryForm(false);
 		setQuickCategoryName("");
 		setQuickCategoryDescription("");
-		setQuickCategoryIcon("🍜");
+		setQuickCategoryIcon("Utensils");
 	}
 
 	async function handleQuickCategoryCreate() {
@@ -157,7 +163,7 @@ export default function KelolaMenuPage() {
 				setForm((current) => ({ ...current, menuCategoryId: res.data?.id || current.menuCategoryId }));
 				setQuickCategoryName("");
 				setQuickCategoryDescription("");
-				setQuickCategoryIcon("🍜");
+				setQuickCategoryIcon("Utensils");
 				setShowQuickCategoryForm(false);
 			} else {
 				setError(res.message || "Gagal menambahkan kategori");
@@ -546,14 +552,24 @@ export default function KelolaMenuPage() {
 														className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
 													/>
 												</div>
-												<div>
-													<label className="block text-xs font-medium text-slate-600 mb-1">Icon</label>
-													<input
-														type="text"
-														value={quickCategoryIcon}
-														onChange={(e) => setQuickCategoryIcon(e.target.value)}
-														className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
-													/>
+												<div className="sm:col-span-2 mt-2">
+													<label className="block text-xs font-medium text-slate-600 mb-2">Icon Kategori</label>
+													<div className="flex flex-wrap gap-2">
+														{iconOptionsList.map((iconName) => {
+															const IconComp = iconMap[iconName];
+															return (
+																<button
+																	key={iconName}
+																	type="button"
+																	onClick={() => setQuickCategoryIcon(iconName)}
+																	className={`p-2.5 rounded-lg border-2 transition flex items-center justify-center ${quickCategoryIcon === iconName ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-300 hover:border-blue-300 text-slate-500'}`}
+																	title={iconName}
+																>
+																	<IconComp className="w-5 h-5" />
+																</button>
+															);
+														})}
+													</div>
 												</div>
 											</div>
 											<button

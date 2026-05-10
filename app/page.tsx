@@ -1,15 +1,21 @@
 import HeroSection from "@/components/HeroSection";
-import MenuFavoritSection from "@/components/MenuFavoritSection";
+import { HowItWorksSection } from "@/components/HowItWorksSection";
 import AppPromoSection from "@/components/AppPromoSection";
+import {FeaturesSection} from "@/components/FeaturesSection";
 import FooterSection from "@/components/FooterSection";
+import { AnimatedBackground } from "@/components/ui/animated-background";
 
 export default function Home() {
   return (
-    <main className="w-full overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.14),_transparent_34%),linear-gradient(180deg,_rgba(248,250,252,1)_0%,_rgba(255,255,255,1)_42%,_rgba(241,245,249,1)_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_34%),linear-gradient(180deg,_rgba(15,23,42,1)_0%,_rgba(2,6,23,1)_100%)]">
-      <HeroSection />
-      <MenuFavoritSection />
-      <AppPromoSection />
-      <FooterSection />
+    <main className="relative min-h-screen w-full bg-slate-50 dark:bg-slate-950 selection:bg-blue-500/30">
+      <AnimatedBackground />
+      <div className="relative z-10 flex flex-col items-center">
+        <HeroSection />
+        <HowItWorksSection />
+        <AppPromoSection />
+        <FeaturesSection />
+        <FooterSection />
+      </div>
     </main>
   );
 }

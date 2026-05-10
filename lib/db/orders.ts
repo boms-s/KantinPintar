@@ -114,6 +114,7 @@ export const orderDb = {
             businessName: true,
           },
         },
+        payment: true,
       },
       orderBy: { createdAt: "desc" },
       take: filters?.limit || 20,

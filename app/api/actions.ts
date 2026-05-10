@@ -1,7 +1,13 @@
 "use server";
 
 import { z } from "zod";
-import { userDb, menuDb, categoryDb, cartDb, orderDb } from "@/lib/db";
+import { NextResponse } from "next/server";
+import { userDb } from "@/lib/db/users";
+import { cartDb } from "@/lib/db/cart";
+import { orderDb } from "@/lib/db/orders";
+import { menuDb } from "@/lib/db/menus";
+import { categoryDb } from "@/lib/db/categories";
+import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 
 // ============================================
@@ -537,9 +543,143 @@ export async function removeFromCartAction(
   }
 }
 
+/**
+ * Update cart item quantity
+ */
+export async function updateCartQuantityAction(
+  pembeliId: string,
+  menuId: string,
+  quantity: number,
+) {
+  try {
+    if (quantity <= 0) {
+      await cartDb.removeItem(pembeliId, menuId);
+      return { success: true, message: "Item dihapus dari keranjang" };
+    }
+    const item = await cartDb.updateQuantity(pembeliId, menuId, quantity);
+    return { success: true, data: item };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Gagal mengubah jumlah",
+    };
+  }
+}
+
+/**
+ * Clear all items from cart
+ */
+export async function clearCartAction(pembeliId: string) {
+  try {
+    await cartDb.clearCart(pembeliId);
+    return { success: true, message: "Keranjang berhasil dikosongkan" };
+  } catch (error) {
+    return {
+      success: false,
+      message: "Gagal mengosongkan keranjang",
+    };
+  }
+}
+
 // ============================================
 // ORDER ACTIONS
 // ============================================
+
+import { snap, coreApi } from "@/lib/midtrans";
+
+/**
+ * Create order and generate Midtrans Token for the entire cart
+ */
+export async function createOrderAndGetPaymentTokenAction(
+  pembeliId: string,
+  notes: string = ""
+) {
+  try {
+    // 1. Get cart items grouped by penjual
+    const groupedCart = await cartDb.getCartByPenjual(pembeliId);
+    if (groupedCart.length === 0) {
+      return { success: false, message: "Keranjang kosong" };
+    }
+
+    // 2. Calculate grand total
+    const grandTotal = groupedCart.reduce((sum: number, group: any) => sum + group.subtotal, 0);
+    const midtransOrderId = `GROUP-${pembeliId}-${Date.now()}`; // Custom grouped ID
+
+    // 3. Generate Midtrans Snap Token FIRST so we can save it in the DB
+    const user = await prisma.user.findFirst({
+      where: { pembeli: { id: pembeliId } },
+      include: { pembeli: true }
+    });
+
+    const parameter = {
+      transaction_details: {
+        order_id: midtransOrderId,
+        gross_amount: grandTotal,
+      },
+      customer_details: {
+        first_name: user?.pembeli?.fullName || "Pembeli",
+        email: user?.email || "pembeli@example.com",
+        phone: user?.pembeli?.phone || "08111222333",
+      },
+    };
+
+    const tokenResponse = await snap.createTransaction(parameter);
+    const snapToken = tokenResponse.token;
+
+    // 4. Create Orders in DB for each penjual and save snapToken
+    const createdOrders = [];
+    for (const group of groupedCart) {
+      const penjualId = group.penjual.id;
+      
+      const order = await prisma.order.create({
+        data: {
+          pembeliId,
+          penjualId,
+          status: "PENDING",
+          deliveryType: "PICKUP",
+          subtotal: group.subtotal,
+          totalPrice: group.subtotal,
+          paymentMethod: "EWALLETS",
+          paymentStatus: "PENDING",
+          notes,
+          items: {
+            create: group.items.map((item: any) => ({
+              menuId: item.menuId,
+              quantity: item.quantity,
+              unitPrice: item.price,
+              subtotal: item.price * item.quantity,
+            })),
+          },
+          payment: {
+            create: {
+              method: "EWALLETS",
+              amount: group.subtotal,
+              status: "PENDING",
+              transactionId: midtransOrderId,
+              snapToken: snapToken, // <-- Save the token here!
+            },
+          },
+        },
+      });
+      createdOrders.push(order);
+    }
+
+    // 5. Clear the cart
+    await cartDb.clearCart(pembeliId);
+
+    return {
+      success: true,
+      token: tokenResponse.token,
+      orderId: midtransOrderId,
+    };
+  } catch (error) {
+    console.error("Midtrans Create Token Error:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Gagal membuat transaksi",
+    };
+  }
+}
 
 /**
  * Create order
@@ -584,6 +724,86 @@ export async function createOrderAction(
       success: false,
       message: "Gagal membuat pesanan",
     };
+  }
+}
+
+/**
+ * Cancel order
+ */
+export async function cancelOrderAction(orderId: string, reason?: string) {
+  try {
+    const order = await orderDb.cancelOrder(orderId, reason);
+    return {
+      success: true,
+      message: "Pesanan berhasil dibatalkan",
+      data: order,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: "Gagal membatalkan pesanan",
+    };
+  }
+}
+
+/**
+ * Manually sync payment status from Midtrans (useful for localhost without webhook)
+ */
+export async function syncPaymentStatusAction(transactionId: string) {
+  try {
+    const statusResponse = await coreApi.transaction.status(transactionId);
+    const { transaction_status, fraud_status } = statusResponse;
+
+    let newPaymentStatus = "PENDING";
+    let newOrderStatus = "PENDING";
+
+    if (transaction_status === "capture" || transaction_status === "settlement") {
+      if (fraud_status === "challenge") {
+        newPaymentStatus = "PENDING";
+        newOrderStatus = "PENDING";
+      } else {
+        newPaymentStatus = "COMPLETED";
+        newOrderStatus = "CONFIRMED"; // Move to seller's dashboard queue
+      }
+    } else if (
+      transaction_status === "cancel" ||
+      transaction_status === "deny" ||
+      transaction_status === "expire"
+    ) {
+      newPaymentStatus = "FAILED";
+      newOrderStatus = "CANCELLED";
+    }
+
+    if (newPaymentStatus !== "PENDING") {
+      // Find all payments with this transactionId
+      const payments = await prisma.payment.findMany({
+        where: { transactionId },
+        include: { order: true },
+      });
+
+      // Update all of them
+      for (const payment of payments) {
+        await prisma.payment.update({
+          where: { id: payment.id },
+          data: { status: newPaymentStatus as any },
+        });
+
+        // Always update order's paymentStatus
+        await prisma.order.update({
+          where: { id: payment.orderId },
+          data: { 
+            paymentStatus: newPaymentStatus as any,
+            // Only update order status if it's currently PENDING
+            ...(payment.order.status === "PENDING" ? { status: newOrderStatus as any } : {})
+          },
+        });
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Sync Midtrans Error:", error);
+    return { success: false };
   }
 }
 

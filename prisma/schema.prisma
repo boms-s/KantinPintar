@@ -3,7 +3,7 @@
 
 generator client {
   provider = "prisma-client"
-  output   = "../node_modules/.prisma/client"
+  output   = "../lib/prisma-generated"
 }
 
 datasource db {
@@ -392,6 +392,7 @@ model Payment {
   // Payment proof
   proofUrl        String?
   transactionId   String?
+  snapToken       String?
   
   // Timestamps
   paidAt          DateTime?

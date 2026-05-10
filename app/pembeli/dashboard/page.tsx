@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Clock3, ShoppingBag, ShoppingCart, TrendingUp, Wallet } from "lucide-react";
 
-import { getBuyerOrdersAction, getCartAction, getCurrentUserAction } from "@/app/api/actions";
+import { getBuyerOrdersAction, getCartAction } from "@/app/api/actions";
+import { usePembeli } from "@/lib/context/PembeliContext";
 
 type DashboardOrder = {
   id: string;
@@ -27,41 +28,32 @@ type CurrentUser = {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<CurrentUser | null>(null);
+  const { user, pembeliId, cartQty } = usePembeli(); // ← dari layout context
+
   const [orders, setOrders] = useState<DashboardOrder[]>([]);
-  const [cartCount, setCartCount] = useState(0);
+  const [cartCount, setCartCount] = useState(cartQty);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (!pembeliId) return;
+    let cancelled = false;
+
     const loadDashboard = async () => {
-      const session = await getCurrentUserAction();
-
-      if (!session.success || !session.data || session.data.role !== "PEMBELI") {
-        router.replace("/pembeli/login");
-        return;
-      }
-
-      const currentUser = session.data as CurrentUser;
-      setUser(currentUser);
-
-      const pembeliId = currentUser.pembeli?.id;
-      if (!pembeliId) {
-        router.replace("/pembeli/login");
-        return;
-      }
-
       const [ordersResult, cartResult] = await Promise.all([
         getBuyerOrdersAction(pembeliId),
         getCartAction(pembeliId),
       ]);
 
+      if (cancelled) return;
+
       setOrders((ordersResult.success ? (ordersResult.data as DashboardOrder[]) : []).slice(0, 3));
-      setCartCount(cartResult.success && cartResult.data ? cartResult.data.totalQuantity || 0 : 0);
+      setCartCount(cartResult.success && cartResult.data ? (cartResult.data as any).totalQuantity || 0 : 0);
       setIsLoading(false);
     };
 
     loadDashboard();
-  }, [router]);
+    return () => { cancelled = true; };
+  }, [pembeliId]);
 
   const { stats, recentOrders } = useMemo(() => {
     if (!user) {

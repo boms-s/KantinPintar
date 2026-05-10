@@ -2,32 +2,44 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Order } from "@/lib/types";
-import { orderStorage, userStorage } from "@/lib/storage";
 import { CheckCircle, XCircle } from "lucide-react";
+import { usePembeli } from "@/lib/context/PembeliContext";
+import { getBuyerOrdersAction } from "@/app/api/actions";
 
 export default function RiwayatPage() {
   const router = useRouter();
-  const [history, setHistory] = useState<Order[]>([]);
-  const [filter, setFilter] = useState<"completed" | "cancelled">("completed");
+  const { pembeliId } = usePembeli();
+  const [history, setHistory] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [filter, setFilter] = useState<"ALL" | "COMPLETED" | "CANCELLED">("ALL");
 
   useEffect(() => {
-    const user = userStorage.get();
-    if (!user) {
-      router.push("/pembeli/login");
-      return;
-    }
+    if (!pembeliId) return;
 
-    const allOrders = orderStorage.getAll();
-    const userHistory = allOrders
-      .filter((o) => o.userId === user.id)
-      .filter((o) => o.status === "completed" || o.status === "cancelled")
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    let cancelled = false;
+    const fetchOrders = async () => {
+      const res = await getBuyerOrdersAction(pembeliId);
+      if (!cancelled && res.success && res.data) {
+        // Filter out only completed or cancelled orders
+        const pastOrders = res.data.filter((o: any) => o.status === "COMPLETED" || o.status === "CANCELLED");
+        setHistory(pastOrders);
+      }
+      if (!cancelled) setIsLoading(false);
+    };
 
-    setHistory(userHistory);
-  }, [router]);
+    fetchOrders();
+    return () => { cancelled = true; };
+  }, [pembeliId]);
 
-  const filteredHistory = history.filter((o) => o.status === filter);
+  const filteredHistory = filter === "ALL" ? history : history.filter((o) => o.status === filter);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center p-6">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+      </div>
+    );
+  }
 
   if (history.length === 0) {
     return (
@@ -47,7 +59,7 @@ export default function RiwayatPage() {
 
       {/* Filter */}
       <div className="flex gap-2 mb-6">
-        {["completed", "cancelled"].map((status) => (
+        {["ALL", "COMPLETED", "CANCELLED"].map((status) => (
           <button
             key={status}
             onClick={() => setFilter(status as any)}
@@ -57,7 +69,7 @@ export default function RiwayatPage() {
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
             }`}
           >
-            {status === "completed" ? "Selesai" : "Dibatalkan"}
+            {status === "ALL" ? "Semua" : status === "COMPLETED" ? "Selesai" : "Dibatalkan"}
           </button>
         ))}
       </div>
@@ -66,7 +78,7 @@ export default function RiwayatPage() {
       <div className="space-y-4">
         {filteredHistory.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 text-center">
-            <p className="text-gray-500">Tidak ada pesanan {filter === "completed" ? "yang selesai" : "yang dibatalkan"}</p>
+            <p className="text-gray-500">Tidak ada riwayat untuk filter yang dipilih</p>
           </div>
         ) : (
           filteredHistory.map((order) => (
@@ -77,11 +89,12 @@ export default function RiwayatPage() {
               {/* Header */}
               <div className="flex items-start justify-between mb-4 pb-4 border-b border-gray-200">
                 <div>
-                  <p className="text-sm text-gray-500">ID Pesanan</p>
-                  <p className="text-lg font-bold text-gray-900">{order.id}</p>
+                  <p className="text-sm text-gray-500">Kode Transaksi</p>
+                  <p className="text-lg font-bold text-gray-900">{order.transactionCode}</p>
+                  <p className="text-sm font-medium text-blue-600 mt-1">Warung: {order.penjual?.businessName}</p>
                 </div>
                 <div>
-                  {order.status === "completed" ? (
+                  {order.status === "COMPLETED" ? (
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
                       <CheckCircle size={14} />
                       Selesai
@@ -99,12 +112,18 @@ export default function RiwayatPage() {
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div>
                   <p className="text-xs text-gray-500 font-semibold mb-1">Jumlah Item</p>
-                  <p className="text-lg font-bold text-gray-900">{order.items.length}</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {order.items?.reduce((sum: number, i: any) => sum + i.quantity, 0) || 0}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 font-semibold mb-1">Tanggal</p>
                   <p className="text-sm font-semibold text-gray-900">
-                    {new Date(order.createdAt).toLocaleDateString("id-ID")}
+                    {new Date(order.createdAt).toLocaleDateString("id-ID", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
                   </p>
                 </div>
                 <div>
@@ -119,13 +138,21 @@ export default function RiwayatPage() {
               <div className="pt-4 border-t border-gray-200">
                 <p className="text-xs font-semibold text-gray-600 mb-2">Item Pesanan:</p>
                 <div className="space-y-1 text-sm text-gray-600">
-                  {order.items.map((item, idx) => (
-                    <p key={idx}>
-                      {item.name} x{item.qty} - Rp {(item.price * item.qty).toLocaleString("id-ID")}
+                  {order.items?.map((item: any) => (
+                    <p key={item.id}>
+                      {item.menu?.name} x{item.quantity} - Rp {item.subtotal.toLocaleString("id-ID")}
                     </p>
                   ))}
                 </div>
               </div>
+
+              {/* Notes or Reason for Cancellation */}
+              {order.notes && (
+                <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <p className="mb-1 text-xs font-semibold text-gray-500">Catatan / Alasan Batal</p>
+                  <p className="text-sm text-gray-700">{order.notes}</p>
+                </div>
+              )}
             </div>
           ))
         )}

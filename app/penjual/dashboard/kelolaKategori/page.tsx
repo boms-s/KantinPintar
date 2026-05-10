@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUserAction, getSellerCategoriesAction, createMenuCategoryAction, updateMenuCategoryAction, deleteMenuCategoryAction } from "@/app/api/actions";
+import { Utensils, CupSoda, Cookie, CakeSlice, Package, Coffee, Pizza, Croissant, IceCream, Sandwich } from "lucide-react";
+
+const iconMap: Record<string, any> = {
+	Utensils, CupSoda, Cookie, CakeSlice, Package, Coffee, Pizza, Croissant, IceCream, Sandwich
+};
+
+const iconOptionsList = Object.keys(iconMap);
 
 interface Category {
 	id: string;
@@ -180,7 +187,25 @@ export default function KelolaKategoriPage() {
 		}
 	}
 
-	const iconOptions = ["🍜", "🥤", "🍪", "🍰", "📦"];
+	const renderIcon = (iconName?: string, sizeClass: string = "w-16 h-16") => {
+		if (!iconName) {
+			const DefaultIcon = iconMap["Package"];
+			return <DefaultIcon className={`${sizeClass} text-blue-500`} />;
+		}
+
+		const IconComponent = iconMap[iconName];
+		if (IconComponent) {
+			return <IconComponent className={`${sizeClass} text-blue-500`} />;
+		}
+
+		// Fallback for existing emoji data in database
+		if (iconName.length <= 4) {
+			return <span className={sizeClass === "w-16 h-16" ? "text-6xl" : "text-2xl"}>{iconName}</span>;
+		}
+
+		const FallbackIcon = iconMap["Package"];
+		return <FallbackIcon className={`${sizeClass} text-blue-500`} />;
+	};
 
 	return (
 		<div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 py-8 px-4 sm:px-6 lg:px-8">
@@ -262,7 +287,7 @@ export default function KelolaKategoriPage() {
 							{categories.map((cat) => (
 								<div key={cat.id} className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition">
 									<div className="h-32 bg-linear-to-br from-blue-100 to-blue-50 flex items-center justify-center">
-										<span className="text-6xl">{cat.icon || "📦"}</span>
+										{renderIcon(cat.icon)}
 									</div>
 									<div className="p-4">
 										<h3 className="font-bold text-slate-900 text-lg mb-2">{cat.name}</h3>
@@ -328,28 +353,23 @@ export default function KelolaKategoriPage() {
 									/>
 								</div>
 
-								{/* Icon/Emoji */}
 								<div>
-									<label className="block text-sm font-medium text-slate-700 mb-2">Icon</label>
-									<div className="flex gap-2">
-										{iconOptions.map((icon) => (
-											<button
-												key={icon}
-												type="button"
-												onClick={() => setForm({...form, icon})}
-												className={`flex-1 py-2 text-2xl rounded-lg border-2 transition ${form.icon === icon ? 'border-blue-600 bg-blue-50' : 'border-slate-300 hover:border-blue-300'}`}
-											>
-												{icon}
-											</button>
-										))}
-										<input 
-											type="text"
-											maxLength={2}
-											value={form.icon}
-											onChange={(e) => setForm({...form, icon: e.target.value})}
-											placeholder="Atau custom"
-											className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-										/>
+									<label className="block text-sm font-medium text-slate-700 mb-2">Icon Kategori</label>
+									<div className="flex flex-wrap gap-2">
+										{iconOptionsList.map((iconName) => {
+											const IconComp = iconMap[iconName];
+											return (
+												<button
+													key={iconName}
+													type="button"
+													onClick={() => setForm({...form, icon: iconName})}
+													className={`p-3 rounded-lg border-2 transition flex items-center justify-center ${form.icon === iconName ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-300 hover:border-blue-300 text-slate-500'}`}
+													title={iconName}
+												>
+													<IconComp className="w-6 h-6" />
+												</button>
+											);
+										})}
 									</div>
 								</div>
 							</div>
